@@ -1,1 +1,1 @@
-from .fetcher import fetch_stock, fetch_multi, STOCK_NAMES
+from .fetcher import fetch_stock, fetch_multi, STOCK_NAMES, DEFAULT_POOL

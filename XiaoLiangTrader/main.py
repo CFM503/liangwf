@@ -12,6 +12,7 @@
 ╚══════════════════════════════════════════════════════════╝
 
 用法:
+    python main.py --scan             # 🔍 批量选股扫描（核心功能）
     python main.py --backtest         # 回测
     python main.py --train            # 训练 ML 模型
     python main.py --once             # 手动运行一次
@@ -140,6 +141,54 @@ def cmd_status(config_path):
     print(json.dumps(status, indent=2, ensure_ascii=False, default=str))
 
 
+def cmd_scan(config_path, pool_override=None):
+    """
+    批量选股扫描 — 这是"校园股神"的核心玩法
+    扫描整个股票池，输出候选列表 + 信号强度 + 建议仓位
+    """
+    from config.settings import load_config
+    from data.fetcher import DEFAULT_POOL
+    from strategy.screener import StockScreener
+    from ml_model.predictor import MLPredictor
+
+    cfg = load_config(config_path)
+
+    # 股票池：命令行指定 > 配置文件 > 默认池
+    pool = pool_override or cfg.stocks or DEFAULT_POOL
+
+    # ML 模型（可选）
+    predictor = None
+    if cfg.ml.enabled:
+        predictor = MLPredictor(
+            model_type=cfg.ml.model_type,
+            forward_days=cfg.ml.forward_days,
+            threshold=cfg.ml.threshold,
+        )
+        models = predictor.list_saved_models()
+        if models:
+            predictor.load(models[-1])
+        else:
+            print("⚠️  ML 已启用但无模型，先运行 --train，或仅用技术面选股")
+            predictor = None
+
+    screener = StockScreener(
+        fast_period=cfg.strategy.fast_period,
+        slow_period=cfg.strategy.slow_period,
+        vol_mult=cfg.strategy.vol_mult,
+        ml_predictor=predictor,
+        ml_confidence=cfg.ml.confidence_threshold if cfg.ml.enabled else 0,
+    )
+
+    print(f"🔍 扫描 {len(pool)} 只股票...")
+    if predictor:
+        print(f"   ML 模型: {cfg.ml.model_type} (阈值 {cfg.ml.confidence_threshold})")
+    else:
+        print(f"   ML: 未启用，仅技术面选股")
+
+    results = screener.scan(pool)
+    screener.print_results(results)
+
+
 def cmd_encrypt(config_path):
     from utils.crypto import encrypt_yaml_value
     import yaml
@@ -190,6 +239,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
+  python main.py --scan              # 🔍 批量选股扫描
+  python main.py --scan --pool 600519 300750 002594  # 指定股票池
   python main.py --backtest          # 回测
   python main.py --train             # 训练 ML 模型
   python main.py --once              # 手动运行一次
@@ -198,6 +249,8 @@ def main():
         """,
     )
     parser.add_argument("--config", default=None, help="配置文件路径")
+    parser.add_argument("--scan", action="store_true", help="🔍 批量选股扫描")
+    parser.add_argument("--pool", nargs="+", default=None, help="自定义股票池（代码列表）")
     parser.add_argument("--once", action="store_true", help="单次运行")
     parser.add_argument("--backtest", action="store_true", help="运行回测")
     parser.add_argument("--train", action="store_true", help="训练 ML 模型")
@@ -215,6 +268,8 @@ def main():
         cmd_stop()
     elif args.resume:
         cmd_resume()
+    elif args.scan:
+        cmd_scan(config_path, pool_override=args.pool)
     elif args.backtest:
         cmd_backtest(config_path)
     elif args.train:
