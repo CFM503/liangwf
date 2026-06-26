@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 数据缓存
+data_cache/
+XiaoLiangTrader/data/cache/
+
+# 日志
+logs/
+*.log
+
+# 数据库
+*.db
+
+# 模型文件
+XiaoLiangTrader/ml_model/saved_models/*.pkl
+
+# 输出
+output/
+*.png
+
+# 密钥
+.secret
+.key
+.kill_switch
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db

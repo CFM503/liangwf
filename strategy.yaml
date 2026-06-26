@@ -1,0 +1,112 @@
+# ============================================================
+#  量化交易系统配置文件 (strategy.yaml)
+#  灵感来源：梁文锋早期自动化策略思路
+# ============================================================
+
+# ----------------------------------------------------------
+# 数据源配置
+# ----------------------------------------------------------
+data:
+  source: "akshare"            # 数据源: akshare / tushare
+  tushare_token: ""            # tushare pro token（使用tushare时填写）
+  stock_pool:                  # 股票池
+    - "000001"                 # 平安银行
+    - "600519"                 # 贵州茅台
+    - "000858"                 # 五粮液
+    - "601318"                 # 中国平安
+    - "600036"                 # 招商银行
+  start_date: "20230101"       # 回测起始日期
+  end_date: "20251231"         # 回测结束日期
+  frequency: "daily"           # 数据频率: daily / 60min / 30min
+
+# ----------------------------------------------------------
+# 策略参数配置
+# ----------------------------------------------------------
+strategy:
+  name: "dual_ma_volume_ml"    # 策略名称
+
+  # 双均线策略参数
+  ma:
+    fast_period: 5             # 快线周期（短期均线）
+    slow_period: 20            # 慢线周期（长期均线）
+
+  # 成交量过滤参数
+  volume:
+    enabled: true              # 是否启用成交量过滤
+    avg_period: 20             # 成交量均值计算周期
+    multiplier: 1.5            # 成交量放大倍数阈值
+
+  # 机器学习预测模块
+  ml:
+    enabled: true              # 是否启用ML预测
+    model: "random_forest"     # 模型类型: random_forest / gradient_boosting
+    lookback_days: 60          # 特征回看天数
+    train_ratio: 0.7           # 训练集比例
+    feature_set:               # 特征列表
+      - "return_1d"            # 1日收益率
+      - "return_5d"            # 5日收益率
+      - "return_10d"           # 10日收益率
+      - "volatility_10d"       # 10日波动率
+      - "volatility_20d"       # 20日波动率
+      - "volume_ratio"         # 量比
+      - "ma5_deviation"        # 偏离MA5程度
+      - "ma20_deviation"       # 偏离MA20程度
+      - "rsi_14"               # RSI指标
+      - "macd_hist"            # MACD柱状值
+
+# ----------------------------------------------------------
+# 风控参数配置
+# ----------------------------------------------------------
+risk:
+  # 仓位管理
+  position:
+    max_position_pct: 0.3      # 单只股票最大仓位占比
+    total_position_pct: 0.8    # 总仓位上限占比
+    min_trade_amount: 100      # 最小交易股数（A股为100股整数倍）
+
+  # 止损止盈
+  stop_loss:
+    enabled: true
+    pct: 0.05                  # 止损比例 5%
+  take_profit:
+    enabled: true
+    pct: 0.10                  # 止盈比例 10%
+
+  # 日亏损限额
+  daily_loss:
+    enabled: true
+    max_daily_loss_pct: 0.03   # 单日最大亏损 3%
+
+  # 总体风控
+  max_drawdown:
+    enabled: true
+    pct: 0.15                  # 最大回撤 15% 触发全平仓
+
+# ----------------------------------------------------------
+# 回测参数配置
+# ----------------------------------------------------------
+backtest:
+  initial_capital: 1000000     # 初始资金 100万
+  commission_rate: 0.0003      # 佣金费率 万三
+  stamp_tax_rate: 0.001        # 印花税 千一（卖出时收取）
+  slippage_pct: 0.001          # 滑点 0.1%
+  benchmark: "000300"          # 基准指数（沪深300）
+
+# ----------------------------------------------------------
+# 实盘配置（预留）
+# ----------------------------------------------------------
+live_trading:
+  enabled: false               # 是否启用实盘
+  broker: "simulation"         # 券商: simulation / eastmoney / htsc
+  api_key: ""                  # 券商API Key
+  api_secret: ""               # 券商API Secret
+  account_id: ""               # 资金账户
+
+# ----------------------------------------------------------
+# 日志与输出配置
+# ----------------------------------------------------------
+logging:
+  level: "INFO"                # 日志级别: DEBUG / INFO / WARNING / ERROR
+  save_report: true            # 是否保存回测报告
+  report_dir: "./reports"      # 报告输出目录
+  plot_results: true           # 是否画图展示

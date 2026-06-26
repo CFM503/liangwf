@@ -1,0 +1,12 @@
+backtrader>=1.9.78
+akshare>=1.14.0
+pandas>=2.0
+numpy>=1.24
+matplotlib>=3.7
+vectorbt>=0.26.0
+kaleido>=0.2.1
+
+# TradingAgent 新增依赖
+schedule>=1.2.0
+cryptography>=41.0
+pyyaml>=6.0
