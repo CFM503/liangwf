@@ -2,9 +2,8 @@
 # XiaoLiangTrader — 个人量化交易配置
 # ═══════════════════════════════════════════════════
 # 修改后直接生效，不用改代码
-# 敏感字段用 python main.py --encrypt 自动加密
 
-# 标的池（A股代码，不带交易所前缀）
+# 标的池（A股代码）
 stocks:
   - "600519"    # 贵州茅台
   - "300750"    # 宁德时代
@@ -13,7 +12,7 @@ stocks:
 # 初始资金（元）
 initial_cash: 1000000
 
-# 每日自动运行时间（收盘后）
+# 每日运行时间（收盘后）
 run_time: "15:10"
 
 # 数据回溯起始日
@@ -23,42 +22,44 @@ data_start: "20180101"
 # 双均线策略参数
 # ─────────────────────────────────────────────
 strategy:
-  fast_period: 5       # 短期均线
-  slow_period: 20      # 长期均线
-  vol_period: 20       # 均量周期
-  vol_mult: 1.5        # 成交量放大倍数
-  stop_loss: 0.08      # 止损 8%
-  take_profit: 0.15    # 止盈 15%
-  trailing_pct: 0.05   # 跟踪止盈回撤 5%
+  fast_period: 5
+  slow_period: 20
+  vol_period: 20
+  vol_mult: 1.5
+  stop_loss: 0.08
+  take_profit: 0.15
+  trailing_pct: 0.05
 
 # ─────────────────────────────────────────────
 # 风控参数
 # ─────────────────────────────────────────────
 risk:
-  max_single_pct: 0.20       # 单股 ≤ 20%
-  max_total_pct: 0.60        # 总仓位 ≤ 60%
-  max_daily_loss_pct: 0.03   # 每日亏损 ≤ 3%
-  limit_up_threshold: 0.095  # 涨停阈值（9.5%以上不追）
+  max_single_pct: 0.20
+  max_total_pct: 0.60
+  max_daily_loss_pct: 0.03
+  limit_up_threshold: 0.095
   limit_down_threshold: -0.095
   kill_switch_file: ".kill_switch"
 
 # ─────────────────────────────────────────────
 # 机器学习增强（可选）
 # ─────────────────────────────────────────────
+# model_type 可选:
+#   lightgbm          — 速度快，推荐（需 pip install lightgbm）
+#   xgboost           — 精度高（需 pip install xgboost）
+#   random_forest     — 最稳定，不过拟合（sklearn 自带）
+#   gradient_boosting — sklearn 自带 GBDT
+# ─────────────────────────────────────────────
 ml:
-  enabled: false             # 改为 true 启用 LightGBM
+  enabled: false
+  model_type: "lightgbm"
   lookback_days: 60
   retrain_days: 30
+  forward_days: 3
+  threshold: 0.02
   confidence_threshold: 0.6
-
-# ─────────────────────────────────────────────
-# 本地大模型辅助（可选）
-# ─────────────────────────────────────────────
-llm:
-  enabled: false             # 改为 true 启用 Ollama 辅助
-  api_url: "http://localhost:11434/api/generate"
-  model_name: "qwen2.5:1.5b"
-  timeout: 30
+  n_estimators: 200
+  max_depth: 5
 
 # ─────────────────────────────────────────────
 # 邮件通知

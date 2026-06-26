@@ -5,19 +5,18 @@
 ║                                                          ║
 ║  "在宿舍里用一台笔记本，也能跑通量化交易的全流程"          ║
 ║                                                          ║
-║  作者: 浙大在校生（2010年代）                              ║
+║  2008-2010，浙大，个人电脑，LightGBM + 双均线             ║
+║  不依赖大模型，不依赖 GPU，纯粹的机器学习 + 技术分析       ║
+║                                                          ║
 ║  声明: 仅供学习，不构成投资建议                            ║
 ╚══════════════════════════════════════════════════════════╝
 
 用法:
-    python main.py                    # 启动定时调度（每日自动运行）
-    python main.py --once             # 立即运行一次
-    python main.py --backtest         # 运行回测
+    python main.py --backtest         # 回测
     python main.py --train            # 训练 ML 模型
-    python main.py --status           # 查看账户状态
-    python main.py --encrypt          # 加密配置中的密码
-    python main.py --stop             # 紧急停止（Kill Switch）
-    python main.py --resume           # 恢复交易
+    python main.py --once             # 手动运行一次
+    python main.py                    # 启动每日自动交易
+    python main.py --stop             # 紧急停止
 """
 
 import argparse
@@ -26,7 +25,6 @@ import sys
 import json
 from pathlib import Path
 
-# 确保项目根目录在 path
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
@@ -51,8 +49,7 @@ def cmd_scheduler(config_path):
     log.info("🏫 XiaoLiangTrader 定时调度启动")
     log.info(f"   每日运行: {cfg.run_time}")
     log.info(f"   标的: {cfg.stocks}")
-    log.info(f"   ML: {'✓' if cfg.ml.enabled else '✗'}")
-    log.info(f"   LLM: {'✓' if cfg.llm.enabled else '✗'}")
+    log.info(f"   ML: {'✓ ' + cfg.ml.model_type if cfg.ml.enabled else '✗'}")
     log.info("   Ctrl+C 退出")
     log.info("=" * 60)
 
@@ -73,16 +70,13 @@ def cmd_scheduler(config_path):
 
 
 def cmd_once(config_path):
-    """单次运行"""
     from config.settings import load_config
     from bot.scheduler import TradingAgent
     cfg = load_config(config_path)
-    agent = TradingAgent(cfg)
-    agent.run_daily()
+    TradingAgent(cfg).run_daily()
 
 
 def cmd_backtest(config_path):
-    """运行回测"""
     from config.settings import load_config
     from backtest.engine import BacktestEngine
     cfg = load_config(config_path)
@@ -101,39 +95,52 @@ def cmd_train(config_path):
     """训练 ML 模型"""
     from config.settings import load_config
     from data.fetcher import fetch_stock
-    from ml_model.lgb_model import LightGBMModel
+    from ml_model.predictor import MLPredictor
 
     cfg = load_config(config_path)
-    print("正在训练 LightGBM 模型...")
+    model_type = cfg.ml.model_type
+    print(f"正在训练 {model_type} 模型...")
 
-    # 用第一只股票训练（简单起见）
+    predictor = MLPredictor(
+        model_type=model_type,
+        forward_days=cfg.ml.forward_days,
+        threshold=cfg.ml.threshold,
+        n_estimators=cfg.ml.n_estimators,
+        max_depth=cfg.ml.max_depth,
+    )
+
+    # 逐只股票训练（简单起见用第一只）
     symbol = cfg.stocks[0]
     df = fetch_stock(symbol, cfg.data_start, use_cache=True)
     if df.empty:
         print(f"无数据: {symbol}")
         return
 
-    model = LightGBMModel()
-    metrics = model.train(df)
-    model.save()
+    metrics = predictor.train(df)
+    predictor.save()
 
-    print("\n训练结果:")
-    for k, v in metrics.items():
-        print(f"  {k}: {v}")
+    print(f"\n{'='*45}")
+    print(f"  模型: {metrics['model_type']}")
+    print(f"  训练集准确率: {metrics['train_accuracy']:.2%}")
+    print(f"  验证集准确率: {metrics['val_accuracy']:.2%}")
+    print(f"  训练样本: {metrics['train_samples']}")
+    print(f"  验证样本: {metrics['val_samples']}")
+    if metrics.get("top_features"):
+        print(f"  Top5 特征:")
+        for i, (feat, imp) in enumerate(list(metrics["top_features"].items())[:5]):
+            print(f"    {i+1}. {feat} ({imp:.0f})")
+    print(f"{'='*45}")
 
 
 def cmd_status(config_path):
-    """查看状态"""
     from config.settings import load_config
     from bot.scheduler import TradingAgent
     cfg = load_config(config_path)
-    agent = TradingAgent(cfg)
-    status = agent.get_status()
+    status = TradingAgent(cfg).get_status()
     print(json.dumps(status, indent=2, ensure_ascii=False, default=str))
 
 
 def cmd_encrypt(config_path):
-    """加密配置"""
     from utils.crypto import encrypt_yaml_value
     import yaml
 

@@ -1,10 +1,13 @@
 # 🏫 XiaoLiangTrader — 校园股神量化系统
 
-> "在宿舍里用一台笔记本，也能跑通量化交易的全流程。"
+> "2008-2010，浙大宿舍，一台个人电脑，用编程自动化 + 传统机器学习在股市里找机会。"
 
-一个面向个人学习的 A 股量化交易项目。双均线策略 + 成交量过滤 + LightGBM 预测 + 本地大模型辅助 + 全自动定时交易。
+一个面向个人学习的 A 股量化交易项目。
+**双均线策略 + 成交量过滤 + LightGBM/XGBoost/sklearn 预测 + 全自动定时交易。**
 
-**⚠️ 声明：本项目仅供学习，不构成任何投资建议。股市有风险，入市需谨慎。**
+不依赖大模型，不依赖 GPU，16GB 内存的笔记本就能跑。
+
+**⚠️ 声明：仅供学习，不构成投资建议。股市有风险，入市需谨慎。**
 
 ---
 
@@ -12,165 +15,124 @@
 
 ```
 XiaoLiangTrader/
-├── main.py                  # 🚀 一键入口（所有命令都在这）
+├── main.py                  # 🚀 一键入口
 ├── config/
-│   ├── config.yaml          # ⚙️ 配置文件（改参数不用改代码）
-│   └── settings.py          # 配置加载
+│   ├── config.yaml          # ⚙️ 配置文件
+│   └── settings.py
 ├── data/
 │   ├── fetcher.py           # 📊 akshare 数据获取 + CSV 缓存
-│   └── cache/               # 本地缓存
+│   └── cache/
 ├── strategy/
-│   ├── signals.py           # 信号定义（BUY/SELL/HOLD）
+│   ├── signals.py           # 信号定义
 │   ├── dual_ma.py           # 📈 双均线交叉策略
-│   └── ml_strategy.py       # 🤖 ML 增强策略（LightGBM + LLM）
+│   └── ml_strategy.py       # 🤖 ML 增强策略
 ├── ml_model/
-│   ├── features.py          # 🧮 特征工程（20+ 技术指标）
-│   ├── lgb_model.py         # 🌲 LightGBM 预测模型
-│   ├── llm_advisor.py       # 🧠 本地大模型（Ollama/LM Studio）
-│   └── saved_models/        # 训练好的模型
+│   ├── features.py          # 🧮 30 个技术指标特征
+│   ├── predictor.py         # 🌲 统一 ML 预测器（LGB/XGB/sklearn）
+│   └── saved_models/
 ├── backtest/
-│   └── engine.py            # 📉 Backtrader 回测引擎
+│   └── engine.py            # 📉 Backtrader 回测
 ├── bot/
-│   ├── executor.py          # 💰 订单执行（模拟盘 SQLite / 实盘预留）
-│   ├── risk.py              # 🛡️ 风控（Kill Switch / 涨跌停 / 仓位）
+│   ├── executor.py          # 💰 订单执行（模拟/实盘预留）
+│   ├── risk.py              # 🛡️ 风控
 │   ├── notifier.py          # 📧 邮件通知
-│   └── scheduler.py         # 🤖 交易 Agent（每日编排）
+│   └── scheduler.py         # 🤖 交易 Agent
 ├── utils/
-│   ├── logger.py            # 📝 日志（按日轮转）
-│   └── crypto.py            # 🔐 API Key 加密
-├── logs/                    # 日志文件
-├── output/                  # 回测图表
-└── requirements.txt
+│   ├── logger.py            # 📝 日志
+│   └── crypto.py            # 🔐 加密
+├── requirements.txt
+└── README.md
 ```
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
-
 ```bash
 cd XiaoLiangTrader
 pip install -r requirements.txt
-```
 
-### 2. 回测（推荐先跑这个）
-
-```bash
+# 回测
 python main.py --backtest
-```
 
-输出：年化收益率、胜率、最大回撤、夏普比率 + K线图（`output/backtest_result.png`）
-
-### 3. 训练 ML 模型（可选）
-
-```bash
-# 需要 lightgbm
+# 训练 ML 模型
 python main.py --train
-```
 
-### 4. 单次运行（测试）
-
-```bash
+# 手动跑一次
 python main.py --once
-```
 
-### 5. 启动每日自动交易
-
-```bash
+# 启动每日自动交易（15:10 收盘后）
 python main.py
-# 每天 15:10（收盘后）自动运行
-# Ctrl+C 退出
+
+# 紧急停止
+python main.py --stop
 ```
 
-### 6. 紧急停止 / 恢复
+## 🤖 ML 模型选择
 
-```bash
-python main.py --stop     # 立即停止所有交易
-python main.py --resume   # 恢复
-```
+在 `config/config.yaml` 中设置 `ml.model_type`：
 
-### 7. 查看账户状态
+| 模型 | 速度 | 精度 | 说明 |
+|------|------|------|------|
+| `lightgbm` | ⭐⭐⭐ | ⭐⭐⭐ | **推荐**，速度最快 |
+| `xgboost` | ⭐⭐ | ⭐⭐⭐ | 精度略高，速度稍慢 |
+| `random_forest` | ⭐⭐ | ⭐⭐ | 最稳定，不容易过拟合 |
+| `gradient_boosting` | ⭐ | ⭐⭐ | sklearn 自带，兼容性好 |
 
-```bash
-python main.py --status
-```
+全部 < 100MB 内存，7 年日线数据训练 < 5 秒。
 
-## ⚙️ 配置说明
+## 🧮 特征工程（30 个技术指标）
+
+| 类别 | 特征 |
+|------|------|
+| 均线 | MA5/10/20/60 偏离率，多空排列 |
+| 动量 | 1/5/10/20 日收益率 |
+| 波动 | 10/20 日波动率，ATR(14) |
+| 成交量 | 5/20 日量比，量价相关性 |
+| RSI | RSI(14) |
+| MACD | DIF, DEA, MACD 柱 |
+| KDJ | K, D, J 值 |
+| 布林带 | 带宽，价格位置 |
+| K线 | 上下影线，实体比，振幅 |
+| 趋势 | 20 日线性回归斜率，收盘价位置 |
+
+## ⚙️ 配置
 
 编辑 `config/config.yaml`：
 
 ```yaml
-# 标的池
 stocks: ["600519", "300750", "601318"]
 
-# 策略参数
 strategy:
-  fast_period: 5       # 短期均线
-  slow_period: 20      # 长期均线
-  vol_mult: 1.5        # 成交量放大倍数
-  stop_loss: 0.08      # 止损 8%
-  take_profit: 0.15    # 止盈 15%
+  fast_period: 5
+  slow_period: 20
+  stop_loss: 0.08
 
-# ML 增强
 ml:
-  enabled: false       # 改为 true 启用
-
-# 本地大模型
-llm:
-  enabled: false       # 改为 true 启用
-  model_name: "qwen2.5:1.5b"
+  enabled: true              # 改为 true 启用
+  model_type: "lightgbm"     # lightgbm / xgboost / random_forest / gradient_boosting
+  confidence_threshold: 0.6
 ```
-
-## 🤖 本地大模型接入
-
-需要先安装 [Ollama](https://ollama.com)：
-
-```bash
-# 安装 Ollama 后拉取模型
-ollama pull qwen2.5:1.5b
-
-# 在 config.yaml 中启用
-llm:
-  enabled: true
-```
-
-LLM 的角色是**辅助决策**，不是独立交易。它读取技术指标后给出"买/不建议"的参考，最终由双均线策略和风控做决定。
 
 ## 🛡️ 风控机制
 
 | 机制 | 说明 |
 |------|------|
-| Kill Switch | 文件 `.kill_switch` 存在即停止，CLI 命令控制 |
-| T+1 | 今日买入不能今日卖出（A股规则） |
-| 涨停不追 | 涨幅 ≥ 9.5% 不买入 |
-| 跌停不卖 | 跌幅 ≤ -9.5% 不尝试卖出 |
-| 止损 | 单笔亏损 -8% 强制卖出 |
-| 跟踪止盈 | 盈利 15% 后从最高点回撤 5% 卖出 |
+| Kill Switch | 创建文件即停止，CLI 控制 |
+| T+1 | 今日买入不能今日卖出 |
+| 涨停不追 | ≥ 9.5% 不买入 |
+| 跌停不卖 | ≤ -9.5% 不尝试卖出 |
+| 止损 -8% | 强制卖出 |
+| 跟踪止盈 | 盈利 15% 后回撤 5% 卖出 |
 | 仓位限制 | 单股 ≤ 20%，总仓位 ≤ 60% |
-| 日亏损限额 | 当日亏损 ≥ 3% 暂停交易 |
-| 密钥加密 | `--encrypt` 加密 config.yaml 中的密码 |
+| 日亏损限额 | 当日 ≥ 3% 暂停交易 |
 
 ## ⚠️ 风险警告
 
-### 策略风险
+- **过拟合**：回测漂亮不代表实盘赚钱
 - **滞后性**：MA 是滞后指标，金叉时行情可能已走一半
-- **震荡市**：横盘期频繁假突破，反复止损（最大风险）
-- **过拟合**：回测漂亮不代表实盘赚钱，参数可能只对历史有效
-- **幸存者偏差**：选的都是好股票，不代表未来
-
-### A 股特殊风险
-- **涨跌停**：可能无法执行止损
-- **T+1**：止损有 1 天延迟
-- **印花税**：卖出千一，频繁交易成本高
-- **滑点冲击**：小盘股尤其严重
-
-### 改进建议
-1. **趋势过滤**：加 MA60/MA120，只在上升趋势做多
-2. **ATR 动态止损**：用 ATR×2 代替固定止损
-3. **样本外验证**：2018-2022 训练，2023-2025 验证
-4. **Walk-forward**：滚动窗口优化，避免过拟合
-5. **行业轮动**：按 ETF 轮动而非个股
-6. **纸上交易**：实盘前至少模拟 3 个月
+- **震荡市**：横盘期反复止损是最大风险
+- **样本外验证**：2018-2022 训练，2023-2025 验证
+- **纸上交易**：实盘前至少模拟 3 个月
 
 ---
 
-**仅供学习，不构成投资建议。** 祝你在量化之路上越走越远 🎓
+**仅供学习，不构成投资建议。** 🎓

@@ -9,7 +9,6 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# 确保项目根在 sys.path
 _root = Path(__file__).parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
@@ -19,8 +18,7 @@ from data.fetcher import fetch_stock, STOCK_NAMES
 from strategy.signals import Action
 from strategy.dual_ma import DualMAStrategy
 from strategy.ml_strategy import MLEnhancedStrategy
-from ml_model.lgb_model import LightGBMModel
-from ml_model.llm_advisor import LLMAdvisor
+from ml_model.predictor import MLPredictor
 from bot.executor import SimulatorExecutor, create_executor
 from bot.risk import RiskManager
 from bot.notifier import Notifier
@@ -35,7 +33,7 @@ class TradingAgent:
 
     用法:
         agent = TradingAgent(config)
-        agent.run_daily()  # 每日流程
+        agent.run_daily()
     """
 
     def __init__(self, config: Config):
@@ -53,36 +51,29 @@ class TradingAgent:
         )
 
         # ML 增强（可选）
-        self.lgb_model = None
+        self.predictor = None
         if config.ml.enabled:
-            self.lgb_model = LightGBMModel()
-            models = self.lgb_model.list_saved_models()
+            self.predictor = MLPredictor(
+                model_type=config.ml.model_type,
+                forward_days=config.ml.forward_days,
+                threshold=config.ml.threshold,
+                n_estimators=config.ml.n_estimators,
+                max_depth=config.ml.max_depth,
+            )
+            models = self.predictor.list_saved_models()
             if models:
-                self.lgb_model.load(models[-1])
+                self.predictor.load(models[-1])
                 log.info(f"[Agent] 已加载 ML 模型: {models[-1]}")
             else:
-                log.warning("[Agent] ML 已启用但无模型，请先训练")
-                self.lgb_model = None
-
-        # LLM 辅助（可选）
-        self.llm = None
-        if config.llm.enabled:
-            self.llm = LLMAdvisor(
-                api_url=config.llm.api_url,
-                model_name=config.llm.model_name,
-                timeout=config.llm.timeout,
-            )
-            if not self.llm.check_health():
-                log.warning("[Agent] LLM 服务不可用，跳过")
-                self.llm = None
+                log.warning("[Agent] ML 已启用但无模型，请先运行 --train")
+                self.predictor = None
 
         # 组合策略
-        if self.lgb_model or self.llm:
+        if self.predictor:
             self.strategy = MLEnhancedStrategy(
                 base_strategy=self.base_strategy,
                 ml_confidence=config.ml.confidence_threshold,
-                lgb_model=self.lgb_model,
-                llm_advisor=self.llm,
+                ml_predictor=self.predictor,
             )
         else:
             self.strategy = self.base_strategy
@@ -122,6 +113,7 @@ class TradingAgent:
         log.info(f"[Agent] 标的: {self.config.stocks}")
         log.info(f"[Agent] 参数: MA{self.config.strategy.fast_period}"
                  f"/{self.config.strategy.slow_period}")
+        log.info(f"[Agent] ML: {'✓ ' + self.config.ml.model_type if self.config.ml.enabled else '✗'}")
         log.info("=" * 60)
 
         # T+1 重置
@@ -158,7 +150,6 @@ class TradingAgent:
         """处理单只股票"""
         log.info(f"[Agent] ── {symbol} ({STOCK_NAMES.get(symbol, '')}) ──")
 
-        # 获取数据（最近 60 个交易日）
         end = datetime.now().strftime("%Y%m%d")
         start = (datetime.now() - timedelta(days=90)).strftime("%Y%m%d")
         df = fetch_stock(symbol, start, end, use_cache=False)
@@ -167,28 +158,19 @@ class TradingAgent:
             log.warning(f"[Agent] {symbol} 数据不足")
             return {"symbol": symbol, "signal": "数据不足", "action": "SKIP"}
 
-        # 当日涨跌幅（用于涨跌停检查）
         pct_change = (df["close"].iloc[-1] / df["close"].iloc[-2] - 1) if len(df) >= 2 else 0
 
-        # 更新持仓最高价
         price = df["close"].iloc[-1]
         pos_size = self.executor.get_position(symbol)
         if pos_size > 0:
             self.executor.update_max_price(symbol, price)
 
         # 计算信号
-        if isinstance(self.strategy, MLEnhancedStrategy):
-            sig = self.strategy.get_latest_signal(
-                df, symbol, pos_size,
-                self.executor.get_buy_price(symbol),
-                self.executor.get_max_price(symbol),
-            )
-        else:
-            sig = self.strategy.get_latest_signal(
-                df, symbol, pos_size,
-                self.executor.get_buy_price(symbol),
-                self.executor.get_max_price(symbol),
-            )
+        sig = self.strategy.get_latest_signal(
+            df, symbol, pos_size,
+            self.executor.get_buy_price(symbol),
+            self.executor.get_max_price(symbol),
+        )
 
         log.info(f"[Agent] {symbol} {sig.action.value} | {price:.2f} | "
                  f"MA({sig.ma_fast:.1f}/{sig.ma_slow:.1f}) | {sig.reason}")
@@ -228,14 +210,12 @@ class TradingAgent:
         lines = [
             f"{'='*50}",
             f"📊 每日报告 {datetime.now():%Y-%m-%d %H:%M}",
-            f"{'='*50}",
-            f"",
+            f"{'='*50}", "",
             f"💰 账户:",
             f"  总净值:   {total:>12,.0f}",
             f"  可用资金: {cash:>12,.0f}",
             f"  持仓市值: {total-cash:>12,.0f}",
-            f"  仓位:     {(total-cash)/total*100:.1f}%",
-            f"",
+            f"  仓位:     {(total-cash)/total*100:.1f}%", "",
         ]
 
         if positions:
@@ -259,7 +239,7 @@ class TradingAgent:
             "stocks": self.config.stocks,
             "strategy": f"MA{self.config.strategy.fast_period}/{self.config.strategy.slow_period}",
             "ml_enabled": self.config.ml.enabled,
-            "llm_enabled": self.config.llm.enabled,
+            "ml_model_type": self.config.ml.model_type if self.config.ml.enabled else "none",
             "cash": self.executor.get_cash(),
             "total_value": self.executor.get_total_value(),
             "positions": self.executor.get_positions_summary(),
