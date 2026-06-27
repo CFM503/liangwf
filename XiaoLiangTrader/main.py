@@ -13,6 +13,7 @@
 
 用法:
     python main.py --scan             # 🔍 批量选股扫描（核心功能）
+    python main.py --scan --all       # 🔍 全市场扫描（5000+ 只 A 股）
     python main.py --backtest         # 回测
     python main.py --train            # 训练 ML 模型
     python main.py --once             # 手动运行一次
@@ -141,7 +142,7 @@ def cmd_status(config_path):
     print(json.dumps(status, indent=2, ensure_ascii=False, default=str))
 
 
-def cmd_scan(config_path, pool_override=None):
+def cmd_scan(config_path, pool_override=None, scan_all=False):
     """
     批量选股扫描 — 这是"校园股神"的核心玩法
     扫描整个股票池，输出候选列表 + 信号强度 + 建议仓位
@@ -177,15 +178,28 @@ def cmd_scan(config_path, pool_override=None):
         vol_mult=cfg.strategy.vol_mult,
         ml_predictor=predictor,
         ml_confidence=cfg.ml.confidence_threshold if cfg.ml.enabled else 0,
+        min_tech_score=cfg.screener.min_tech_score if hasattr(cfg, 'screener') else 40.0,
+        top_n=cfg.screener.top_n if hasattr(cfg, 'screener') else 10,
+        max_position_pct=cfg.screener.max_position_pct if hasattr(cfg, 'screener') else 20.0,
     )
 
-    print(f"🔍 扫描 {len(pool)} 只股票...")
-    if predictor:
-        print(f"   ML 模型: {cfg.ml.model_type} (阈值 {cfg.ml.confidence_threshold})")
+    if scan_all:
+        # 全市场扫描模式
+        print("🔍 全市场扫描模式（5000+ 只 A 股）")
+        if predictor:
+            print(f"   ML 模型: {cfg.ml.model_type} (阈值 {cfg.ml.confidence_threshold})")
+        else:
+            print(f"   ML: 未启用，仅技术面选股")
+        results = screener.scan_all()
     else:
-        print(f"   ML: 未启用，仅技术面选股")
+        # 指定股票池扫描
+        print(f"🔍 扫描 {len(pool)} 只股票...")
+        if predictor:
+            print(f"   ML 模型: {cfg.ml.model_type} (阈值 {cfg.ml.confidence_threshold})")
+        else:
+            print(f"   ML: 未启用，仅技术面选股")
+        results = screener.scan(pool)
 
-    results = screener.scan(pool)
     screener.print_results(results)
 
 
@@ -239,7 +253,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  python main.py --scan              # 🔍 批量选股扫描
+  python main.py --scan              # 🔍 扫描指定股票池
+  python main.py --scan --all        # 🔍 全市场扫描（5000+ 只 A 股）
   python main.py --scan --pool 600519 300750 002594  # 指定股票池
   python main.py --backtest          # 回测
   python main.py --train             # 训练 ML 模型
@@ -250,6 +265,7 @@ def main():
     )
     parser.add_argument("--config", default=None, help="配置文件路径")
     parser.add_argument("--scan", action="store_true", help="🔍 批量选股扫描")
+    parser.add_argument("--all", action="store_true", dest="scan_all", help="全市场扫描（5000+ 只 A 股）")
     parser.add_argument("--pool", nargs="+", default=None, help="自定义股票池（代码列表）")
     parser.add_argument("--once", action="store_true", help="单次运行")
     parser.add_argument("--backtest", action="store_true", help="运行回测")
@@ -269,7 +285,7 @@ def main():
     elif args.resume:
         cmd_resume()
     elif args.scan:
-        cmd_scan(config_path, pool_override=args.pool)
+        cmd_scan(config_path, pool_override=args.pool, scan_all=args.scan_all)
     elif args.backtest:
         cmd_backtest(config_path)
     elif args.train:

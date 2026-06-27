@@ -18,7 +18,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from data.fetcher import fetch_stock, STOCK_NAMES
+from data.fetcher import fetch_stock, fetch_all_a_snapshot, STOCK_NAMES
 from ml_model.predictor import MLPredictor
 from ml_model.features import compute_features
 from utils.logger import get_logger
@@ -136,6 +136,119 @@ class StockScreener:
         log.info(f"[选股] 扫描完成 | {elapsed:.1f}s | {len(results)} 只 | {buy_count} 只买入信号")
 
         return results[:self.top_n]
+
+    def scan_all(
+        self,
+        pre_filter_top_n: int = 200,
+        detail_top_n: int = 50,
+    ) -> list[StockScore]:
+        """
+        全市场选股 — 从 5000+ 只 A 股中筛选
+
+        两阶段扫描：
+          第一阶段：实时快照快速筛选（量比、涨跌幅、换手率）→ ~200 只
+          第二阶段：拉取历史数据，完整技术面打分 → top 10
+
+        Args:
+            pre_filter_top_n: 第一阶段快速筛选保留数量
+            detail_top_n: 第二阶段详细打分保留数量
+        """
+        import time as _time
+        t0 = _time.time()
+
+        # ── 第一阶段：快速筛选 ──
+        log.info("[全市场] 第一阶段：获取全 A 股快照...")
+        snapshot = fetch_all_a_snapshot()
+        if snapshot.empty:
+            log.error("[全市场] 无法获取快照数据")
+            return []
+
+        total = len(snapshot)
+
+        # 过滤条件
+        df = snapshot.copy()
+
+        # 1. 排除 ST / 退市 / 新股（名称含 ST、N、C）
+        df = df[~df["name"].str.contains("ST|退市|N |C ", na=False)]
+
+        # 2. 排除价格异常（< 2 元 或 > 500 元）
+        df = df[(df["close"] >= 2) & (df["close"] <= 500)]
+
+        # 3. 排除停牌（成交额为 0）
+        if "amount" in df.columns:
+            df = df[df["amount"] > 0]
+
+        # 4. 排除创业板 300xxx 中代码不规范的、北交所等
+        df = df[df["code"].str.match(r"^[036]\d{5}$")]
+
+        log.info(f"[全市场] 过滤后 {len(df)}/{total} 只")
+
+        # 快速打分排序（基于实时指标，粗筛）
+        df["quick_score"] = 0.0
+
+        # 成交量活跃度（用换手率代替）
+        if "turnover" in df.columns:
+            df["quick_score"] += df["turnover"].clip(0, 20) * 2  # 换手率越高越活跃
+
+        # 涨跌幅加分（适度上涨的优先）
+        if "pct_chg" in df.columns:
+            df.loc[df["pct_chg"].between(0, 5), "quick_score"] += 20
+            df.loc[df["pct_chg"].between(5, 9.5), "quick_score"] += 10
+            df.loc[df["pct_chg"] < -3, "quick_score"] -= 10
+
+        # 市值偏好（中小盘 50~500 亿优先）
+        if "market_cap" in df.columns:
+            cap_b = df["market_cap"] / 1e8  # 转亿
+            df.loc[cap_b.between(50, 500), "quick_score"] += 15
+            df.loc[cap_b.between(20, 50), "quick_score"] += 10
+
+        # 成交额（流动性保障）
+        if "amount" in df.columns:
+            amt_w = df["amount"] / 1e4  # 转万
+            df.loc[amt_w > 5000, "quick_score"] += 10
+
+        # 取前 N 只进入详细分析
+        df = df.nlargest(pre_filter_top_n, "quick_score")
+        candidates = df["code"].tolist()
+        log.info(f"[全市场] 第一阶段筛选出 {len(candidates)} 只候选")
+
+        # ── 第二阶段：详细技术面打分 ──
+        log.info(f"[全市场] 第二阶段：拉取历史数据并打分...")
+        start_date = (_time.time() - 120 * 86400)
+        from datetime import datetime as _dt
+        start_date = _dt.fromtimestamp(start_date).strftime("%Y%m%d")
+
+        # 构建名称映射
+        name_map = dict(zip(snapshot["code"], snapshot["name"]))
+
+        results: list[StockScore] = []
+        for i, code in enumerate(candidates):
+            try:
+                score = self._score_stock(code, start_date, _dt.now().strftime("%Y%m%d"))
+                if score is not None:
+                    # 用快照里的名称
+                    if not score.name:
+                        score.name = name_map.get(code, "")
+                    results.append(score)
+            except Exception as e:
+                log.warning(f"[全市场] {code} 失败: {e}")
+
+            if (i + 1) % 50 == 0:
+                log.info(f"[全市场] 已打分 {i+1}/{len(candidates)}...")
+
+        # 排序 + 截取 top_n → 再做信号判定和仓位分配
+        results.sort(key=lambda x: x.final_score, reverse=True)
+        results = results[:self.top_n]
+        results = self._assign_signals(results)
+        results = self._allocate_positions(results)
+
+        elapsed = _time.time() - t0
+        buy_count = sum(1 for r in results if r.signal == "BUY")
+        log.info(f"[全市场] 扫描完成 | {elapsed:.1f}s | "
+                 f"全市场 {total} → 候选 {len(candidates)} → "
+                 f"入选 {len(results)} | {buy_count} 只买入信号")
+
+        return results
 
     def _score_stock(self, symbol: str, start_date: str, end_date: str) -> StockScore | None:
         """对单只股票打分"""

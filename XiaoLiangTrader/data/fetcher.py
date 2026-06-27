@@ -123,6 +123,46 @@ def fetch_stock(
     return df
 
 
+def fetch_all_a_snapshot() -> pd.DataFrame:
+    """
+    获取全 A 股实时快照（一次请求拿到全部股票的实时价格、量比、涨跌幅等）。
+
+    用于全市场选股的第一阶段快速筛选。
+
+    Returns:
+        DataFrame，列: code, name, close, pct_chg, volume, amount, amplitude,
+                      turnover, pe, market_cap
+    """
+    log.info("[全市场] 获取 A 股实时快照...")
+    try:
+        df = ak.stock_zh_a_spot_em()
+    except Exception as e:
+        log.error(f"[全市场] 获取快照失败: {e}")
+        return pd.DataFrame()
+
+    if df.empty:
+        return df
+
+    # 统一列名
+    col_map = {
+        "代码": "code", "名称": "name", "最新价": "close",
+        "涨跌幅": "pct_chg", "成交量": "volume", "成交额": "amount",
+        "振幅": "amplitude", "换手率": "turnover",
+        "市盈率-动态": "pe", "总市值": "market_cap",
+    }
+    df = df.rename(columns=col_map)
+    keep = [c for c in col_map.values() if c in df.columns]
+    df = df[keep]
+
+    # 转数值
+    for col in ["close", "pct_chg", "volume", "amount", "amplitude", "turnover", "pe", "market_cap"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    log.info(f"[全市场] 获取到 {len(df)} 只股票")
+    return df
+
+
 def fetch_multi(
     symbols: list[str],
     start_date: str = "20180101",
