@@ -14,19 +14,20 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-# Add project root to sys.path
+# Add project root and XiaoLiangTrader to sys.path
+sys.path.insert(0, str(Path(__file__).parent.parent / "XiaoLiangTrader"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
 import numpy as np
 from datetime import datetime
 
-from data_fetcher import (
-    fetch_stock_data,
-    fetch_multi_stocks,
+from data.fetcher import (
+    fetch_stock as fetch_stock_data,
+    fetch_multi as fetch_multi_stocks,
     calculate_price_limits,
-    generate_synthetic_stock_data,
-    DEFAULT_STOCKS,
+    generate_synthetic_stock as generate_synthetic_stock_data,
+    STOCK_NAMES as DEFAULT_STOCKS,
 )
 
 

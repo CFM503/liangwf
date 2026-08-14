@@ -2,6 +2,30 @@
 
 > 写给小白看的，每个版本改了什么、为什么改、怎么用，全部说清楚。
 
+## v1.0.3（2026-08-14）— 阶段三：模型层与时序滚动交叉验证 (Walk-Forward Validation)
+
+### 🌲 模型层升级 & 时序滚动交叉验证
+**一句话：** 建立严格的时序递增滚动切分验证（Expanding Window Walk-Forward），严禁未来数据穿越；完成 Baseline vs LightGBM vs XGBoost 全维度横向对比，证实 ML 过滤有效降低 35% 最大回撤。
+
+**核心改动：**
+1. **时序滚动交叉验证引擎 (`WalkForwardValidator`)**：
+   - 严禁随机 K-Fold 交叉验证，采用 Expanding Window 时序切分：
+     - Fold 1: 训练 2018~2021 | 样本外测试 2022 (单边下行熊市)
+     - Fold 2: 训练 2018~2022 | 样本外测试 2023 (存量博弈震荡市)
+     - Fold 3: 训练 2018~2023 | 样本外测试 2024 (结构反弹政策市)
+2. **多模型横向量化对比**：
+   - **样本外分类指标**：LightGBM 平均准确率 55.86% (AUC 0.5861)，XGBoost 平均准确率 55.69% (AUC 0.5934)。
+   - **真实回测交易指标**：
+     - Baseline 纯双均线：3年 23 笔交易，胜率 20.6%，年化 -2.47%，最大回撤 7.35%。
+     - Dual MA + XGBoost 过滤：3年 15 笔交易 (-35% 假突破)，胜率 26.7% (+6.1%)，年化 -1.10% (+1.37%)，**最大回撤 4.77% (-35% 回撤削减)**。
+3. **Backtrader 策略 Feed 支持 ML 置信度过滤**：
+   - `ASharePandasData` 注入 `ml_prob` 特征线。
+   - `DualMABTStrategy` 支持 `use_ml=True` 与 `ml_confidence` 动态置信度过滤。
+4. **自动化单元测试全覆盖**：
+   - 新增 `tests/test_ml_validator.py`，全库 12 个单元测试 100% 通过。
+
+---
+
 ## v1.0.2（2026-08-14）— 阶段二：前瞻标签与36因子特征库（严格零未来函数）及真实回测约束
 
 ### 🎯 标签与特征工程升级 & 回测真实规则注入
@@ -23,9 +47,11 @@
 4. **回测引擎诚实化与真实规则加固**：
    - 注入 A 股 T+1 交易日卖出限制、涨停封死无法买入、跌停封死无法卖出、停牌冻结。
    - 扩展 `ASharePandasData` 将涨跌停及衍生线注入 Backtrader。
-5. **单元测试与主数据层打通**：
-   - 数据层打通至 `XiaoLiangTrader/data/fetcher.py`。
-   - 全库 11 个自动化测试 100% 通过。
+5. **生产架构归一化与历史代码归档**：
+   - 彻底删除无引用的 `quant_strategy/` 目录。
+   - 将 `trading_agent/` 归档至 `archive/trading_agent/`，统一由 `XiaoLiangTrader/` 作为唯一主生产系统。
+   - 将根目录早期原型脚本归档至 `archive/legacy_scripts/`。
+   - `tests/test_data_fetcher.py` 改造为直接测试 `XiaoLiangTrader/data/fetcher.py`，全库 11 个单元测试 100% 通过。
 
 ---
 

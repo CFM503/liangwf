@@ -34,7 +34,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 # ═══════════════════════════════════════════════
 class ASharePandasData(bt.feeds.PandasData):
     """
-    扩展 Backtrader 数据 Feed，增加 A 股衍生字段。
+    扩展 Backtrader 数据 Feed，增加 A 股衍生字段与 ML 预测概率。
     """
     lines = (
         "amount",
@@ -44,6 +44,7 @@ class ASharePandasData(bt.feeds.PandasData):
         "is_limit_up",
         "is_limit_down",
         "is_suspended",
+        "ml_prob",
     )
     params = (
         ("amount", -1),
@@ -53,6 +54,7 @@ class ASharePandasData(bt.feeds.PandasData):
         ("is_limit_up", -1),
         ("is_limit_down", -1),
         ("is_suspended", -1),
+        ("ml_prob", -1),
     )
 
 
@@ -74,6 +76,8 @@ class DualMABTStrategy(bt.Strategy):
         trailing_pct=0.05,
         max_single_pct=0.20,
         max_total_pct=0.60,
+        use_ml=False,
+        ml_confidence=0.55,
     )
 
     def __init__(self):
@@ -217,6 +221,14 @@ class DualMABTStrategy(bt.Strategy):
 
                 # 金叉 + 成交量放大
                 if d.ma_cross[0] > 0 and d.volume[0] > d.vol_ma[0] * self.p.vol_mult:
+                    # ── ML 概率过滤（如果启用）──
+                    if self.p.use_ml:
+                        prob = 0.5
+                        if hasattr(d, "ml_prob"):
+                            prob = float(d.ml_prob[0])
+                        if prob < self.p.ml_confidence:
+                            continue  # ML 置信度不足，放弃开仓
+
                     if self._can_buy(d):
                         size = self._buy_size(d)
                         if size >= 100:
@@ -242,6 +254,8 @@ class BacktestEngine:
         fast_period: int = 5,
         slow_period: int = 20,
         vol_mult: float = 1.5,
+        use_ml: bool = False,
+        ml_confidence: float = 0.55,
         plot: bool = True,
     ) -> dict:
         cerebro = bt.Cerebro()
@@ -272,6 +286,7 @@ class BacktestEngine:
                 is_limit_up="is_limit_up" if "is_limit_up" in df.columns else -1,
                 is_limit_down="is_limit_down" if "is_limit_down" in df.columns else -1,
                 is_suspended="is_suspended" if "is_suspended" in df.columns else -1,
+                ml_prob="ml_prob" if "ml_prob" in df.columns else -1,
             )
             cerebro.adddata(data)
             loaded += 1
@@ -285,6 +300,8 @@ class BacktestEngine:
             fast_period=fast_period,
             slow_period=slow_period,
             vol_mult=vol_mult,
+            use_ml=use_ml,
+            ml_confidence=ml_confidence,
         )
 
         # 资金与真实成本
