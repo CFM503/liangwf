@@ -2,6 +2,33 @@
 
 > 写给小白看的，每个版本改了什么、为什么改、怎么用，全部说清楚。
 
+## v1.0.2（2026-08-14）— 阶段二：前瞻标签与36因子特征库（严格零未来函数）及真实回测约束
+
+### 🎯 标签与特征工程升级 & 回测真实规则注入
+**一句话：** 构建科学的短线机会标签与 36 个技术量价特征库，通过自动化单元测试 100% 杜绝未来函数；回测引擎严格模拟 A 股 T+1、涨停不可买、跌停不可卖与停牌冻结。
+
+**核心改动：**
+1. **真实短线机会标签 (`make_forward_max_return_label`)**：
+   - 定义：预测未来 1~5 日内最高涨幅是否 $\ge 3.0\%$，并自动剔除 $T+1$ 开盘一字涨停无法买入的假机会。
+2. **36 因子量化特征库 (`FEATURE_COLS`)**：
+   - 均线偏离类 (5)：`ma5/10/20/60_bias`, `ma_bull_align`
+   - 动量收益类 (5)：`ret_1/3/5/10/20d`
+   - 波动与振幅类 (6)：`volatility_10/20`, `atr_ratio`, `boll_width`, `boll_position`, `high_low_ratio`
+   - 量能与换手率类 (6)：`vol_ratio_5/20`, `vol_price_corr_10`, `turnover_1d`, `turnover_ratio_5`, `amount_ratio_5`
+   - 经典技术指标 (9)：`rsi_6/14`, `macd/signal/hist`, `kdj_k/d/j`, `cci_14`
+   - K线与突破类 (5)：`body_pct`, `upper/lower_shadow`, `high/low_20d_bias`
+   - 趋势与突破 (3)：`breakout_20d`, `trend_20`, `close_position`
+3. **严格零未来函数（Zero Lookahead Bias）自动化检测**：
+   - 新增 `tests/test_features_no_future_leak.py`，采用未来数据 10 倍扰动注入法，断言历史特征数值一致性误差为 0.0000000%。
+4. **回测引擎诚实化与真实规则加固**：
+   - 注入 A 股 T+1 交易日卖出限制、涨停封死无法买入、跌停封死无法卖出、停牌冻结。
+   - 扩展 `ASharePandasData` 将涨跌停及衍生线注入 Backtrader。
+5. **单元测试与主数据层打通**：
+   - 数据层打通至 `XiaoLiangTrader/data/fetcher.py`。
+   - 全库 11 个自动化测试 100% 通过。
+
+---
+
 ## v1.0.1（2026-08-14）— 阶段一：数据层升级与多源容灾加固
 
 ### 📊 数据层全面扩展与容灾

@@ -10,7 +10,7 @@ from .risk import RiskManager
 from .notifier import Notifier
 from .logger import log
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __all__ = [
     "TradingAgent",
     "TradingConfig",

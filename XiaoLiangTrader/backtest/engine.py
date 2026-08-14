@@ -1,17 +1,23 @@
 """
-回测引擎 — 基于 Backtrader，支持 A 股特殊规则
-===============================================
-T+1、涨跌停、手续费、滑点全部模拟。
-输出完整绩效报告。
+回测引擎 — 基于 Backtrader，严格模拟 A 股真实交易规则
+=========================================================
+严格注入：
+1. T+1 交易规则（当日买入必须在 T+1 及之后交易日方可卖出）
+2. 涨停封死无法以收盘价买入（触及/封死涨停时买入订单被拒）
+3. 跌停封死无法以收盘价卖出（触及/封死跌停时卖出顺延至次日）
+4. 停牌日冻结交易（成交量为0或停牌标记时禁止买卖）
+5. 交易手续费（佣金万分之2.5，最低5元）与滑点（0.1%）
+6. 仓位风控（单股最大 20%，总仓位最大 60%）
 """
 
-import backtrader as bt
+import sys
+from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")  # 无头模式
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from pathlib import Path
+import backtrader as bt
 
 from data.fetcher import fetch_stock
 from utils.logger import get_logger
@@ -24,14 +30,38 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 
 # ═══════════════════════════════════════════════
-# 1. Backtrader 策略封装
+# 1. 扩展 A 股数据 Feed
+# ═══════════════════════════════════════════════
+class ASharePandasData(bt.feeds.PandasData):
+    """
+    扩展 Backtrader 数据 Feed，增加 A 股衍生字段。
+    """
+    lines = (
+        "amount",
+        "turnover",
+        "limit_up",
+        "limit_down",
+        "is_limit_up",
+        "is_limit_down",
+        "is_suspended",
+    )
+    params = (
+        ("amount", -1),
+        ("turnover", -1),
+        ("limit_up", -1),
+        ("limit_down", -1),
+        ("is_limit_up", -1),
+        ("is_limit_down", -1),
+        ("is_suspended", -1),
+    )
+
+
+# ═══════════════════════════════════════════════
+# 2. Backtrader 策略封装（含 A 股严格规则）
 # ═══════════════════════════════════════════════
 class DualMABTStrategy(bt.Strategy):
     """
-    双均线策略的 Backtrader 版本
-
-    注意：这个类只在回测时使用。
-    实盘的信号计算用 strategy.dual_ma.DualMAStrategy（纯 pandas）。
+    双均线策略的 Backtrader 版本（含真实 A 股约束）
     """
 
     params = dict(
@@ -49,6 +79,7 @@ class DualMABTStrategy(bt.Strategy):
     def __init__(self):
         self.orders = {}
         self.buy_prices = {}
+        self.buy_dates = {}      # 记录买入成交日期，用于严格 T+1 校验
         self.max_prices = {}
         self.trade_log = []
 
@@ -59,6 +90,7 @@ class DualMABTStrategy(bt.Strategy):
             d.vol_ma = bt.indicators.SMA(d.volume, period=self.p.vol_period)
             self.orders[d] = None
             self.buy_prices[d] = None
+            self.buy_dates[d] = None
             self.max_prices[d] = None
 
     def notify_order(self, order):
@@ -67,17 +99,24 @@ class DualMABTStrategy(bt.Strategy):
             if order.isbuy():
                 self.buy_prices[d] = order.executed.price
                 self.max_prices[d] = order.executed.price
+                self.buy_dates[d] = d.datetime.date(0)
             elif order.issell():
                 buy_p = self.buy_prices.get(d, 0)
                 sell_p = order.executed.price
                 pnl = (sell_p / buy_p - 1) * 100 if buy_p else 0
                 self.trade_log.append({
-                    "stock": d._name, "buy_price": buy_p,
-                    "sell_price": sell_p, "pnl_pct": pnl,
+                    "stock": d._name,
+                    "buy_price": buy_p,
+                    "sell_price": sell_p,
+                    "pnl_pct": pnl,
                     "date": d.datetime.date(0),
                 })
                 self.buy_prices[d] = None
+                self.buy_dates[d] = None
                 self.max_prices[d] = None
+            self.orders[d] = None
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            d = order.data
             self.orders[d] = None
 
     def _position_value(self):
@@ -91,6 +130,8 @@ class DualMABTStrategy(bt.Strategy):
         if self._position_value() >= total * self.p.max_total_pct:
             return False
         max_amt = total * self.p.max_single_pct
+        if data.close[0] <= 0:
+            return False
         return int(max_amt / data.close[0] / 100) * 100 >= 100
 
     def _buy_size(self, data):
@@ -98,39 +139,83 @@ class DualMABTStrategy(bt.Strategy):
         max_amt = total * self.p.max_single_pct
         remaining = total * self.p.max_total_pct - self._position_value()
         amt = min(max_amt, remaining)
+        if data.close[0] <= 0:
+            return 0
         return int(amt / data.close[0] / 100) * 100
 
     def next(self):
         for d in self.datas:
+            curr_date = d.datetime.date(0)
+
+            # ── 1. 停牌检查（停牌日禁止任何买卖）──
+            is_suspended = False
+            if hasattr(d, "is_suspended"):
+                is_suspended = bool(d.is_suspended[0] > 0)
+            if is_suspended or d.volume[0] <= 0:
+                continue
+
             pos = self.getposition(d)
+
+            # ── 2. 持仓中：检查卖出逻辑（T+1、跌停、止损止盈、死叉）──
             if pos.size > 0:
                 price = d.close[0]
                 buy_p = self.buy_prices.get(d)
+                buy_dt = self.buy_dates.get(d)
                 if buy_p is None:
                     continue
 
-                # 更新最高价
+                # 更新持仓最高价
                 if self.max_prices[d] is None or price > self.max_prices[d]:
                     self.max_prices[d] = price
 
-                # 止损
+                # ── 严格 T+1 检查：当日买入必须等到 T+1 交易日方可卖出 ──
+                if buy_dt is not None and curr_date <= buy_dt:
+                    continue  # 当天买入不可卖出
+
+                # ── 跌停检查：跌停封死无法以收盘价卖出 ──
+                is_limit_down = False
+                if hasattr(d, "is_limit_down"):
+                    is_limit_down = bool(d.is_limit_down[0] > 0)
+                if hasattr(d, "limit_down"):
+                    is_limit_down = is_limit_down or (price <= d.limit_down[0] + 0.01 and price <= d.low[0] + 0.01)
+
+                if is_limit_down:
+                    continue  # 跌停封死，卖单无法成交，顺延次日
+
+                # 止损 -8%
                 if price <= buy_p * (1 - self.p.stop_loss):
                     self.orders[d] = self.sell(data=d, size=pos.size)
                     continue
 
-                # 跟踪止盈
+                # 跟踪止盈（盈利 15% 后回撤 5% 卖出）
                 if self.max_prices[d] > buy_p * (1 + self.p.take_profit):
                     if price <= self.max_prices[d] * (1 - self.p.trailing_pct):
                         self.orders[d] = self.sell(data=d, size=pos.size)
                         continue
 
-                # 死叉
+                # 死叉卖出
                 if d.ma_cross[0] < 0:
                     self.orders[d] = self.sell(data=d, size=pos.size)
                     continue
+
+            # ── 3. 空仓中：检查买入逻辑（涨停不追、金叉放量）──
             else:
                 if self.orders.get(d) is not None:
                     continue
+
+                price = d.close[0]
+
+                # ── 涨停检查：涨停封死无法以收盘价买入 ──
+                is_limit_up = False
+                if hasattr(d, "is_limit_up"):
+                    is_limit_up = bool(d.is_limit_up[0] > 0)
+                if hasattr(d, "limit_up"):
+                    is_limit_up = is_limit_up or (price >= d.limit_up[0] - 0.01 and price >= d.high[0] - 0.01)
+
+                if is_limit_up:
+                    continue  # 涨停封死无法买入
+
+                # 金叉 + 成交量放大
                 if d.ma_cross[0] > 0 and d.volume[0] > d.vol_ma[0] * self.p.vol_mult:
                     if self._can_buy(d):
                         size = self._buy_size(d)
@@ -139,16 +224,11 @@ class DualMABTStrategy(bt.Strategy):
 
 
 # ═══════════════════════════════════════════════
-# 2. 回测引擎
+# 3. 回测引擎主类
 # ═══════════════════════════════════════════════
 class BacktestEngine:
     """
-    回测引擎 — 一行代码跑完整回测
-
-    用法:
-        engine = BacktestEngine()
-        report = engine.run(["600519", "300750"])
-        engine.print_report(report)
+    回测引擎 — 严格执行 A 股交易规则
     """
 
     def __init__(self, initial_cash: float = 1_000_000):
@@ -164,12 +244,6 @@ class BacktestEngine:
         vol_mult: float = 1.5,
         plot: bool = True,
     ) -> dict:
-        """
-        运行完整回测。
-
-        Returns:
-            绩效报告 dict
-        """
         cerebro = bt.Cerebro()
 
         # 加载数据
@@ -179,10 +253,25 @@ class BacktestEngine:
             if df.empty:
                 log.warning(f"[回测] {code} 无数据，跳过")
                 continue
-            data = bt.feeds.PandasData(
-                dataname=df, name=code, datetime=None,
-                open="open", high="high", low="low",
-                close="close", volume="volume", openinterest=-1,
+
+            # 使用扩展 A 股数据 Feed
+            data = ASharePandasData(
+                dataname=df,
+                name=code,
+                datetime=None,
+                open="open",
+                high="high",
+                low="low",
+                close="close",
+                volume="volume",
+                openinterest=-1,
+                amount="amount" if "amount" in df.columns else -1,
+                turnover="turnover" if "turnover" in df.columns else -1,
+                limit_up="limit_up" if "limit_up" in df.columns else -1,
+                limit_down="limit_down" if "limit_down" in df.columns else -1,
+                is_limit_up="is_limit_up" if "is_limit_up" in df.columns else -1,
+                is_limit_down="is_limit_down" if "is_limit_down" in df.columns else -1,
+                is_suspended="is_suspended" if "is_suspended" in df.columns else -1,
             )
             cerebro.adddata(data)
             loaded += 1
@@ -191,15 +280,17 @@ class BacktestEngine:
             return {"error": "无有效数据"}
 
         # 策略
-        cerebro.addstrategy(DualMABTStrategy,
-                            fast_period=fast_period,
-                            slow_period=slow_period,
-                            vol_mult=vol_mult)
+        cerebro.addstrategy(
+            DualMABTStrategy,
+            fast_period=fast_period,
+            slow_period=slow_period,
+            vol_mult=vol_mult,
+        )
 
-        # 资金与成本
+        # 资金与真实成本
         cerebro.broker.setcash(self.initial_cash)
-        cerebro.broker.setcommission(commission=0.00025)  # 佣金万2.5
-        cerebro.broker.set_slippage_perc(0.001)           # 滑点0.1%
+        cerebro.broker.setcommission(commission=0.00025)  # 佣金万分之2.5
+        cerebro.broker.set_slippage_perc(0.001)           # 滑点 0.1%
 
         # 分析器
         cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe", riskfreerate=0.03)
@@ -207,7 +298,7 @@ class BacktestEngine:
         cerebro.addanalyzer(bt.analyzers.Returns, _name="returns")
 
         log.info(f"[回测] 开始 | 资金: {self.initial_cash:,.0f} | 标的: {stock_codes}")
-        log.info(f"[回测] 参数: MA{fast_period}/{slow_period} 量比>{vol_mult}x")
+        log.info(f"[回测] 参数: MA{fast_period}/{slow_period} 量比>{vol_mult}x (含T+1/涨跌停/停牌约束)")
 
         results = cerebro.run()
         strat = results[0]
@@ -242,16 +333,16 @@ class BacktestEngine:
             "最大回撤": f"{max_dd:.2f}%",
             "夏普比率": f"{sharpe:.2f}",
             "Calmar比率": f"{annual_ret/max_dd:.2f}" if max_dd > 0 else "N/A",
-            "_trades": trades,  # 内部用，不打印
+            "_trades": trades,
         }
 
         if plot:
             try:
                 fig = cerebro.plot(style="candle", volume=True)[0][0]
                 fig.savefig(OUTPUT_DIR / "backtest_result.png", dpi=150, bbox_inches="tight")
-                log.info(f"[回测] 图表已保存: output/backtest_result.png")
+                log.info("[回测] 图表已保存: output/backtest_result.png")
             except Exception as e:
-                log.warning(f"[回测] 绘图失败: {e}")
+                log.warning(f"[回测] 绘图跳过: {e}")
 
         return report
 
@@ -262,13 +353,13 @@ class BacktestEngine:
             print(f"回测失败: {report['error']}")
             return
 
-        print(f"\n{'='*55}")
-        print("              📊 回测绩效报告")
-        print(f"{'='*55}")
+        print("\n" + "=" * 55)
+        print("              📊 回测绩效报告 (真实约束版)")
+        print("=" * 55)
         for k, v in report.items():
             if not k.startswith("_"):
                 print(f"  {k:>12s}: {v}")
-        print(f"{'='*55}")
+        print("=" * 55)
 
         trades = report.get("_trades", [])
         if trades:

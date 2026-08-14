@@ -9,6 +9,7 @@ build/
 # 数据缓存
 data_cache/
 XiaoLiangTrader/data/cache/
+scratch/
 
 # 日志
 logs/
