@@ -1,0 +1,26 @@
+{
+  "date": "2024-09-30",
+  "total_pool_size": 60,
+  "scanned_count": 60,
+  "signals_triggered_count": 1,
+  "buy_count": 1,
+  "sell_count": 0,
+  "no_signal_count": 59,
+  "ml_confidence_threshold": 0.55,
+  "signals": [
+    {
+      "symbol": "600150",
+      "name": "中国船舶",
+      "action": "BUY",
+      "action_label": "🟢 建议买入",
+      "price": 41.16,
+      "stop_loss_price": 37.86,
+      "take_profit_price": 47.33,
+      "ml_confidence": 0.584,
+      "vol_ratio": 2.52,
+      "reason": "MA5/20金叉 + 放量2.5x + LightGBM置信度0.58",
+      "date": "2024-09-30"
+    }
+  ],
+  "disclaimer": "⚠️ 声明：本信号仅供量化模型学习与学术研究参考，不构成任何实际投资建议。股市有风险，入市需谨慎。"
+}
