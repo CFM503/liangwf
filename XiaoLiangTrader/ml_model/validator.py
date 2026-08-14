@@ -53,7 +53,7 @@ class WalkForwardValidator:
         ml_confidence: float = 0.55,
         initial_cash: float = 1_000_000,
     ):
-        self.stock_codes = stock_codes or ["600519", "300750", "601318", "000858", "600036"]
+        self.stock_codes = stock_codes or list(DEFAULT_POOL)
         self.forward_days = forward_days
         self.threshold = threshold
         self.ml_confidence = ml_confidence

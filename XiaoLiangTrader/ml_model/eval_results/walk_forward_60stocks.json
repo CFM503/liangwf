@@ -1,0 +1,142 @@
+{
+  "folds": [
+    {
+      "fold_name": "Fold 1 (2022 熊市测试)",
+      "train_samples": 52503,
+      "test_samples": 14116,
+      "pos_ratio_test": "53.0%",
+      "classification": {
+        "lightgbm": {
+          "acc": 0.5843015018418816,
+          "auc": 0.6409391743496744,
+          "precision": 0.5668302420360974,
+          "recall": 0.9117056856187291
+        },
+        "xgboost": {
+          "acc": 0.5831680362708983,
+          "auc": 0.6435842407986467,
+          "precision": 0.5660549696919372,
+          "recall": 0.9119732441471572
+        }
+      },
+      "backtest": {
+        "baseline": {
+          "trades_count": 34,
+          "win_rate": 41.17647058823529,
+          "annual_return": 5.522324016747539,
+          "max_drawdown": 11.533192779464454,
+          "sharpe_ratio": 0,
+          "final_value": 1052974.8165627758
+        },
+        "lightgbm": {
+          "trades_count": 29,
+          "win_rate": 44.827586206896555,
+          "annual_return": 6.309536051329608,
+          "max_drawdown": 11.229070375148419,
+          "sharpe_ratio": 0,
+          "final_value": 1060517.3295056007
+        },
+        "xgboost": {
+          "trades_count": 29,
+          "win_rate": 44.827586206896555,
+          "annual_return": 3.706632200581877,
+          "max_drawdown": 11.229070375148419,
+          "sharpe_ratio": 0,
+          "final_value": 1035569.5878659006
+        }
+      }
+    },
+    {
+      "fold_name": "Fold 2 (2023 震荡市测试)",
+      "train_samples": 66919,
+      "test_samples": 14090,
+      "pos_ratio_test": "42.6%",
+      "classification": {
+        "lightgbm": {
+          "acc": 0.5834634492547907,
+          "auc": 0.6142346169802138,
+          "precision": 0.5104213525266157,
+          "recall": 0.566577896138482
+        },
+        "xgboost": {
+          "acc": 0.5857345635202271,
+          "auc": 0.6156824617411875,
+          "precision": 0.5132332456276119,
+          "recall": 0.551930758988016
+        }
+      },
+      "backtest": {
+        "baseline": {
+          "trades_count": 39,
+          "win_rate": 35.8974358974359,
+          "annual_return": -2.435280167734053,
+          "max_drawdown": 11.475416106413087,
+          "sharpe_ratio": 0,
+          "final_value": 976602.1826732258
+        },
+        "lightgbm": {
+          "trades_count": 35,
+          "win_rate": 28.57142857142857,
+          "annual_return": -0.7342032389509876,
+          "max_drawdown": 9.978033599223375,
+          "sharpe_ratio": 0,
+          "final_value": 992948.2883690496
+        },
+        "xgboost": {
+          "trades_count": 36,
+          "win_rate": 16.666666666666664,
+          "annual_return": -9.771005084727841,
+          "max_drawdown": 16.16610208318993,
+          "sharpe_ratio": 0,
+          "final_value": 905978.9330768004
+        }
+      }
+    },
+    {
+      "fold_name": "Fold 3 (2024 反弹市测试)",
+      "train_samples": 81306,
+      "test_samples": 14004,
+      "pos_ratio_test": "48.1%",
+      "classification": {
+        "lightgbm": {
+          "acc": 0.5787632105112825,
+          "auc": 0.6083741292693368,
+          "precision": 0.5557919936161724,
+          "recall": 0.6202137132680321
+        },
+        "xgboost": {
+          "acc": 0.5796915167095116,
+          "auc": 0.6106911925959533,
+          "precision": 0.5572426766998119,
+          "recall": 0.6154645295339863
+        }
+      },
+      "backtest": {
+        "baseline": {
+          "trades_count": 31,
+          "win_rate": 41.935483870967744,
+          "annual_return": 5.3355984922459045,
+          "max_drawdown": 18.384931172072726,
+          "sharpe_ratio": 0,
+          "final_value": 1051185.4166686004
+        },
+        "lightgbm": {
+          "trades_count": 28,
+          "win_rate": 46.42857142857143,
+          "annual_return": 8.099569445486146,
+          "max_drawdown": 18.11719966387883,
+          "sharpe_ratio": 0,
+          "final_value": 1077659.9507098754
+        },
+        "xgboost": {
+          "trades_count": 27,
+          "win_rate": 44.44444444444444,
+          "annual_return": 1.8833375583161265,
+          "max_drawdown": 16.834348413807852,
+          "sharpe_ratio": 0,
+          "final_value": 1018079.3047524003
+        }
+      }
+    }
+  ]
+}
