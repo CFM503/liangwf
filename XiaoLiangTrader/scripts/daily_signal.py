@@ -290,6 +290,77 @@ class DailySignalPipeline:
         print("=" * 90 + "\n")
 
 
+    def format_notification_text(self, payload: Dict) -> str:
+        """生成用于邮件和推送的纯文本报告"""
+        date_str = payload.get("date", datetime.now().strftime("%Y-%m-%d"))
+        signals = payload.get("signals", [])
+        total_scanned = payload.get("scanned_count", 0)
+        buy_cnt = payload.get("buy_count", 0)
+        sell_cnt = payload.get("sell_count", 0)
+        no_sig_cnt = payload.get("no_signal_count", 0)
+
+        lines = [
+            f"🎯 XiaoLiangTrader 每日买卖点预测看板 ({date_str})",
+            "=" * 60,
+            f"📊 扫描概况: 扫描 {total_scanned} 只 | 买入 {buy_cnt} 只 | 卖出 {sell_cnt} 只 | 观望 {no_sig_cnt} 只",
+            "-" * 60,
+        ]
+
+        if not signals:
+            lines.append("今日无触发买卖点的标的（全市场处于震荡或持仓观望状态）。")
+        else:
+            lines.append("【触发信号明细】")
+            for s in signals:
+                action = s["action_label"]
+                sym = s["symbol"]
+                name = s["name"]
+                p = s["price"]
+                sl = f"{s['stop_loss_price']:.2f}" if s['stop_loss_price'] > 0 else "-"
+                tp = f"{s['take_profit_price']:.2f}" if s['take_profit_price'] > 0 else "-"
+                conf = s["ml_confidence"]
+                reason = s["reason"]
+                lines.append(f"• {action} | {sym} {name} | 现价:{p:.2f} | 止损:{sl} | 止盈:{tp} | ML:{conf:.2f} | {reason}")
+
+        lines.extend([
+            "-" * 60,
+            f"{payload.get('disclaimer', '')}",
+            "=" * 60,
+        ])
+        return "\n".join(lines)
+
+    def send_notification(self, payload: Dict, config_path: Optional[str] = None) -> bool:
+        """调用 Notifier 发送邮件通知"""
+        from config.settings import load_config
+        from bot.notifier import Notifier
+
+        cfg = load_config(config_path)
+        notifier = Notifier(
+            enabled=cfg.email.enabled,
+            smtp_server=cfg.email.smtp_server,
+            smtp_port=cfg.email.smtp_port,
+            sender=cfg.email.sender,
+            password=cfg.email.password,
+            receiver=cfg.email.receiver,
+        )
+
+        date_str = payload.get("date", datetime.now().strftime("%Y-%m-%d"))
+        text_body = self.format_notification_text(payload)
+        buy_cnt = payload.get("buy_count", 0)
+        sell_cnt = payload.get("sell_count", 0)
+
+        subject = f"每日信号看板 ({date_str}) [买入:{buy_cnt} / 卖出:{sell_cnt}]"
+        
+        if not notifier.enabled or not notifier.sender:
+            log.info(f"[通知] 邮件通知未配置或未启用 (可在 config/config.yaml 中开启)。")
+            log.info(f"[通知内容预览]:\n{text_body}")
+            return False
+
+        sent = notifier.notify_report(text_body)
+        if sent:
+            log.info(f"[通知] 邮件通知已成功发送至 {notifier.receiver}")
+        return sent
+
+
 def main():
     parser = argparse.ArgumentParser(description="XiaoLiangTrader 每日买卖点预测 Pipeline")
     parser.add_argument("--pool", nargs="+", help="指定股票代码列表（默认 60 只核心龙头池）")
@@ -297,6 +368,9 @@ def main():
     parser.add_argument("--date", type=str, default=None, help="指定计算日期 (YYYYMMDD，默认最新行情)")
     parser.add_argument("--all", action="store_true", help="全市场扫描模式")
     parser.add_argument("--output", type=str, default=None, help="导出 JSON 结果路径")
+    parser.add_argument("--notify", action="store_true", help="触发信号时发送邮件通知")
+    parser.add_argument("--schedule", action="store_true", help="启动收盘后定时自动扫描守护进程")
+    parser.add_argument("--time", type=str, default="15:10", help="定时运行时间 (HH:MM，默认 15:10)")
 
     args = parser.parse_args()
 
@@ -314,15 +388,45 @@ def main():
         target_codes = DEFAULT_POOL
 
     pipeline = DailySignalPipeline(ml_confidence=args.confidence)
-    payload = pipeline.scan_signals(target_codes, as_of_date=args.date)
-    pipeline.print_signal_report(payload)
 
-    # 导出 JSON
-    output_path = Path(args.output) if args.output else (RESULTS_DIR / "daily_signals_latest.json")
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    def run_once():
+        payload = pipeline.scan_signals(target_codes, as_of_date=args.date)
+        pipeline.print_signal_report(payload)
 
-    log.info(f"[Pipeline] 信号结果已导出至: {output_path}")
+        # 导出 JSON
+        output_path = Path(args.output) if args.output else (RESULTS_DIR / "daily_signals_latest.json")
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+
+        log.info(f"[Pipeline] 信号结果已导出至: {output_path}")
+
+        # 邮件通知
+        if args.notify:
+            pipeline.send_notification(payload)
+
+    if args.schedule:
+        try:
+            import schedule
+            import time
+        except ImportError:
+            print("请先安装: pip install schedule")
+            sys.exit(1)
+
+        print("=" * 60)
+        print(f"⏰ XiaoLiangTrader 收盘后定时信号守护已启动")
+        print(f"   每日定点运行时间: {args.time} (A股收盘后)")
+        print(f"   扫描标的规模: {len(target_codes)} 只")
+        print(f"   邮件通知: {'开启' if args.notify else '关闭'}")
+        print("   按 Ctrl+C 退出守护进程")
+        print("=" * 60)
+
+        schedule.every().day.at(args.time).do(run_once)
+
+        while True:
+            schedule.run_pending()
+            time.sleep(30)
+    else:
+        run_once()
 
 
 if __name__ == "__main__":

@@ -34,6 +34,36 @@ class TestDailySignalPipeline(unittest.TestCase):
                 self.assertTrue(sig["stop_loss_price"] < sig["price"])
                 self.assertTrue(sig["take_profit_price"] > sig["price"])
 
+    def test_notification_formatting(self):
+        """测试通知文本排版与格式化"""
+        pipeline = DailySignalPipeline()
+        mock_payload = {
+            "date": "2026-08-14",
+            "scanned_count": 60,
+            "buy_count": 1,
+            "sell_count": 1,
+            "no_signal_count": 58,
+            "signals": [
+                {
+                    "symbol": "600150",
+                    "name": "中国船舶",
+                    "action": "BUY",
+                    "action_label": "🟢 建议买入",
+                    "price": 41.16,
+                    "stop_loss_price": 37.86,
+                    "take_profit_price": 47.33,
+                    "ml_confidence": 0.58,
+                    "reason": "MA5/20金叉",
+                }
+            ],
+            "disclaimer": "仅供参考",
+        }
+        text = pipeline.format_notification_text(mock_payload)
+        self.assertIn("600150", text)
+        self.assertIn("中国船舶", text)
+        self.assertIn("41.16", text)
+        self.assertIn("扫描 60 只", text)
+
 
 if __name__ == "__main__":
     unittest.main()

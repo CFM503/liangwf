@@ -15,10 +15,8 @@ if str(_root) not in sys.path:
 
 from config.settings import Config
 from data.fetcher import fetch_stock, STOCK_NAMES
-from strategy.signals import Action
-from strategy.dual_ma import DualMAStrategy
-from strategy.ml_strategy import MLEnhancedStrategy
-from ml_model.predictor import MLPredictor
+from strategy.signals import Action, Signal
+from scripts.daily_signal import DailySignalPipeline
 from bot.executor import SimulatorExecutor, create_executor
 from bot.risk import RiskManager
 from bot.notifier import Notifier
@@ -29,54 +27,21 @@ log = get_logger("xlt.agent")
 
 class TradingAgent:
     """
-    自动化交易 Agent
-
-    用法:
-        agent = TradingAgent(config)
-        agent.run_daily()
+    自动化交易 Agent — 基于统一的 DailySignalPipeline 进行信号生成
     """
 
     def __init__(self, config: Config):
         self.config = config
 
-        # 基础策略
-        self.base_strategy = DualMAStrategy(
+        # 统一信号流水线
+        self.pipeline = DailySignalPipeline(
+            ml_confidence=config.ml.confidence_threshold,
             fast_period=config.strategy.fast_period,
             slow_period=config.strategy.slow_period,
-            vol_period=config.strategy.vol_period,
             vol_mult=config.strategy.vol_mult,
-            stop_loss=config.strategy.stop_loss,
-            take_profit=config.strategy.take_profit,
-            trailing_pct=config.strategy.trailing_pct,
+            stop_loss_pct=config.strategy.stop_loss,
+            take_profit_pct=config.strategy.take_profit,
         )
-
-        # ML 增强（可选）
-        self.predictor = None
-        if config.ml.enabled:
-            self.predictor = MLPredictor(
-                model_type=config.ml.model_type,
-                forward_days=config.ml.forward_days,
-                threshold=config.ml.threshold,
-                n_estimators=config.ml.n_estimators,
-                max_depth=config.ml.max_depth,
-            )
-            models = self.predictor.list_saved_models()
-            if models:
-                self.predictor.load(models[-1])
-                log.info(f"[Agent] 已加载 ML 模型: {models[-1]}")
-            else:
-                log.warning("[Agent] ML 已启用但无模型，请先运行 --train")
-                self.predictor = None
-
-        # 组合策略
-        if self.predictor:
-            self.strategy = MLEnhancedStrategy(
-                base_strategy=self.base_strategy,
-                ml_confidence=config.ml.confidence_threshold,
-                ml_predictor=self.predictor,
-            )
-        else:
-            self.strategy = self.base_strategy
 
         # 执行器
         self.executor = create_executor(
@@ -106,14 +71,13 @@ class TradingAgent:
         )
 
     def run_daily(self):
-        """每日主流程"""
+        """每日主流程 — 使用统一的 DailySignalPipeline 进行信号生成"""
         log.info("=" * 60)
         log.info("[Agent] 每日流程启动")
         log.info(f"[Agent] {datetime.now():%Y-%m-%d %H:%M}")
-        log.info(f"[Agent] 标的: {self.config.stocks}")
-        log.info(f"[Agent] 参数: MA{self.config.strategy.fast_period}"
-                 f"/{self.config.strategy.slow_period}")
-        log.info(f"[Agent] ML: {'✓ ' + self.config.ml.model_type if self.config.ml.enabled else '✗'}")
+        log.info(f"[Agent] 标的规模: {len(self.config.stocks)} 只")
+        log.info(f"[Agent] 策略引擎: MA{self.config.strategy.fast_period}/{self.config.strategy.slow_period}")
+        log.info(f"[Agent] ML引擎: LightGBM (置信度门槛 ≥ {self.config.ml.confidence_threshold:.2f})")
         log.info("=" * 60)
 
         # T+1 重置
@@ -131,54 +95,57 @@ class TradingAgent:
         self.risk.set_daily_start_value(total)
         log.info(f"[Agent] 今日起始净值: {total:,.0f}")
 
-        # 遍历标的
+        # 1. 统一调用 DailySignalPipeline 生成全市场/股票池信号
+        payload = self.pipeline.scan_signals(self.config.stocks)
+        signals_map = {s["symbol"]: s for s in payload.get("signals", [])}
+        log.info(f"[Agent] 统一流水线扫描完成: 触发信号 {len(signals_map)} 条 (BUY: {payload.get('buy_count', 0)}, SELL: {payload.get('sell_count', 0)})")
+
+        # 2. 结合持仓与风控逐一执行
         results = []
         for symbol in self.config.stocks:
             try:
-                results.append(self._process_symbol(symbol))
+                sig_info = signals_map.get(symbol)
+                results.append(self._process_symbol_with_signal(symbol, sig_info))
             except Exception as e:
                 log.error(f"[Agent] {symbol} 异常: {e}")
                 self.notifier.notify_error(f"{symbol}: {e}")
 
-        # 每日报告
-        report = self._make_report(results)
+        # 3. 生成并发送每日报告
+        report = self._make_report(results, payload)
         log.info("\n" + report)
         self.notifier.notify_report(report)
         log.info("[Agent] 流程结束")
 
-    def _process_symbol(self, symbol: str) -> dict:
-        """处理单只股票"""
-        log.info(f"[Agent] ── {symbol} ({STOCK_NAMES.get(symbol, '')}) ──")
-
-        end = datetime.now().strftime("%Y%m%d")
-        start = (datetime.now() - timedelta(days=90)).strftime("%Y%m%d")
-        df = fetch_stock(symbol, start, end, use_cache=False)
-
-        if df.empty or len(df) < self.config.strategy.slow_period + 2:
-            log.warning(f"[Agent] {symbol} 数据不足")
-            return {"symbol": symbol, "signal": "数据不足", "action": "SKIP"}
-
-        pct_change = (df["close"].iloc[-1] / df["close"].iloc[-2] - 1) if len(df) >= 2 else 0
-
-        price = df["close"].iloc[-1]
+    def _process_symbol_with_signal(self, symbol: str, sig_info: dict | None) -> dict:
+        """结合流水线信号与持仓风控状态处理单只股票"""
         pos_size = self.executor.get_position(symbol)
+        
+        # 无流水线信号时
+        if sig_info is None:
+            return {"symbol": symbol, "signal": "HOLD", "action": "NONE", "detail": "无触发信号 (观望)"}
+
+        action_str = sig_info["action"]
+        price = sig_info["price"]
+        reason = sig_info["reason"]
+
         if pos_size > 0:
             self.executor.update_max_price(symbol, price)
 
-        # 计算信号
-        sig = self.strategy.get_latest_signal(
-            df, symbol, pos_size,
-            self.executor.get_buy_price(symbol),
-            self.executor.get_max_price(symbol),
-        )
+        # 构造统一 Signal 对象
+        if action_str == "BUY":
+            # 如果已有持仓，不重复买入
+            if pos_size > 0:
+                return {"symbol": symbol, "signal": "BUY_IGNORED", "action": "NONE", "detail": "已持有该标的，跳过加仓"}
+            sig = Signal(Action.BUY, symbol, price, 0, reason=reason, ml_score=sig_info.get("ml_confidence", -1.0))
+        elif action_str == "SELL":
+            # 如果空仓，不产生无持仓卖出操作
+            if pos_size == 0:
+                return {"symbol": symbol, "signal": "SELL_SIGNAL", "action": "NONE", "detail": f"出现卖出信号但当前未持仓 ({reason})"}
+            sig = Signal(Action.SELL, symbol, price, pos_size, reason=reason, ml_score=sig_info.get("ml_confidence", -1.0))
+        else:
+            return {"symbol": symbol, "signal": "HOLD", "action": "NONE", "detail": reason}
 
-        log.info(f"[Agent] {symbol} {sig.action.value} | {price:.2f} | "
-                 f"MA({sig.ma_fast:.1f}/{sig.ma_slow:.1f}) | {sig.reason}")
-
-        if sig.action == Action.HOLD:
-            return {"symbol": symbol, "signal": "HOLD", "action": "NONE", "detail": sig.reason}
-
-        # 风控
+        # ── 风控校验 ──
         total = self.executor.get_total_value()
         cash = self.executor.get_cash()
         pos_val = sum(p["size"] * p["buy_price"] for p in self.executor.get_positions_summary())
@@ -187,21 +154,21 @@ class TradingAgent:
             self.notifier.notify_error("今日亏损超限")
             return {"symbol": symbol, "signal": sig.action.value, "action": "BLOCKED", "detail": "亏损超限"}
 
-        ok, reason = self.risk.validate_signal(sig, cash, pos_val, total, pos_size, pct_change)
+        ok, risk_reason = self.risk.validate_signal(sig, cash, pos_val, total, pos_size, 0.0)
         if not ok:
-            log.warning(f"[Agent] {symbol} 风控拒绝: {reason}")
-            return {"symbol": symbol, "signal": sig.action.value, "action": "BLOCKED", "detail": reason}
+            log.warning(f"[Agent] {symbol} 风控拒绝: {risk_reason}")
+            return {"symbol": symbol, "signal": sig.action.value, "action": "BLOCKED", "detail": risk_reason}
 
-        # 执行
+        # ── 执行操作 ──
         result = self.executor.execute(sig)
         if result.success:
             self.notifier.notify_trade(result.action, result.symbol, result.price, result.size, result.reason)
             return {"symbol": symbol, "signal": sig.action.value, "action": "EXECUTED",
-                    "detail": f"{result.action} @ {result.price:.2f} x {result.size}"}
+                    "detail": f"{result.action} @ {result.price:.2f} x {result.size} ({result.reason})"}
         else:
             return {"symbol": symbol, "signal": sig.action.value, "action": "FAILED", "detail": result.message}
 
-    def _make_report(self, results: list[dict]) -> str:
+    def _make_report(self, results: list[dict], payload: dict | None = None) -> str:
         total = self.executor.get_total_value()
         cash = self.executor.get_cash()
         positions = self.executor.get_positions_summary()
@@ -209,9 +176,9 @@ class TradingAgent:
 
         lines = [
             f"{'='*50}",
-            f"📊 每日报告 {datetime.now():%Y-%m-%d %H:%M}",
+            f"📊 XiaoLiangTrader 每日运行报告 {datetime.now():%Y-%m-%d %H:%M}",
             f"{'='*50}", "",
-            f"💰 账户:",
+            f"💰 账户资产:",
             f"  总净值:   {total:>12,.0f}",
             f"  可用资金: {cash:>12,.0f}",
             f"  持仓市值: {total-cash:>12,.0f}",
@@ -219,17 +186,27 @@ class TradingAgent:
         ]
 
         if positions:
-            lines.append("📦 持仓:")
+            lines.append("📦 当前持仓:")
             for p in positions:
-                lines.append(f"  {p['symbol']}: {p['size']}股 @ {p['buy_price']:.2f}")
+                lines.append(f"  {p['symbol']} ({STOCK_NAMES.get(p['symbol'], '')}): {p['size']}股 @ {p['buy_price']:.2f}")
             lines.append("")
 
-        lines.append("📋 操作:")
-        for r in results:
-            icon = {"EXECUTED": "✅", "BLOCKED": "🚫", "FAILED": "❌", "NONE": "⬜", "SKIP": "⏭️"}.get(r["action"], "❓")
-            lines.append(f"  {icon} {r['symbol']}: {r['detail']}")
+        lines.append("📋 触发操作与信号明细:")
+        executed_or_signal = [r for r in results if r["action"] != "NONE"]
+        if not executed_or_signal:
+            lines.append("  今日无交易操作执行。")
+        else:
+            for r in executed_or_signal:
+                icon = {"EXECUTED": "✅", "BLOCKED": "🚫", "FAILED": "❌"}.get(r["action"], "ℹ️")
+                lines.append(f"  {icon} {r['symbol']}: {r['detail']}")
 
-        lines.extend(["", "🛡️ 风控:", f"  Kill Switch: {'🔴' if rs['kill_switch'] else '🟢'}"])
+        lines.extend([
+            "",
+            "🛡️ 风控状态:",
+            f"  Kill Switch: {'🔴 触发停止' if rs['kill_switch'] else '🟢 正常运行'}",
+            "",
+            f"⚠️ 声明：{payload.get('disclaimer') if payload else '仅供量化研究参考，不构成投资建议。'}",
+        ])
 
         return "\n".join(lines)
 
