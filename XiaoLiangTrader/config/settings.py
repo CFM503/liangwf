@@ -4,6 +4,7 @@
 所有参数集中管理，改参数不用改代码。
 """
 
+import os
 import yaml
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -63,6 +64,15 @@ class EmailParams:
 
 
 @dataclass
+class DingTalkParams:
+    """钉钉多维表格通知参数"""
+    enabled: bool = False
+    mcp_url: str = ""       # 从环境变量 DINGTALK_MCP_URL 读取
+    base_id: str = ""
+    table_id: str = ""
+
+
+@dataclass
 class BrokerParams:
     """券商参数"""
     mode: str = "simulator"
@@ -86,6 +96,7 @@ class Config:
     risk: RiskParams = field(default_factory=RiskParams)
     ml: MLParams = field(default_factory=MLParams)
     email: EmailParams = field(default_factory=EmailParams)
+    dingtalk: DingTalkParams = field(default_factory=DingTalkParams)
     broker: BrokerParams = field(default_factory=BrokerParams)
     log_dir: str = "logs"
     db_path: str = "xlt.db"
@@ -127,5 +138,16 @@ def load_config(path: str | Path | None = None) -> Config:
                          for k, v in raw[section_name].items()}
             setattr(cfg, section_name, cls(**{k: v for k, v in decrypted.items()
                                                if k in cls.__dataclass_fields__}))
+
+    # 钉钉多维表格通知参数
+    dt_raw = raw.get("dingtalk", {})
+    env_mcp_url = os.environ.get("DINGTALK_MCP_URL", "")
+    mcp_url = dt_raw.get("mcp_url") or env_mcp_url
+    cfg.dingtalk = DingTalkParams(
+        enabled=dt_raw.get("enabled", False),
+        mcp_url=mcp_url,
+        base_id=dt_raw.get("base_id", ""),
+        table_id=dt_raw.get("table_id", ""),
+    )
 
     return cfg

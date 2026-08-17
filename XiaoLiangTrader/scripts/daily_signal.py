@@ -360,6 +360,22 @@ class DailySignalPipeline:
             log.info(f"[通知] 邮件通知已成功发送至 {notifier.receiver}")
         return sent
 
+    def send_dingtalk_notification(self, payload: Dict, config_path: Optional[str] = None) -> bool:
+        """调用 DingTalkNotifier 向钉钉多维表格写入交易信号"""
+        from config.settings import load_config
+        from bot.dingtalk_notifier import DingTalkNotifier
+
+        cfg = load_config(config_path)
+        dt_notifier = DingTalkNotifier(
+            enabled=True,
+            mcp_url=cfg.dingtalk.mcp_url,
+            base_id=cfg.dingtalk.base_id,
+            table_id=cfg.dingtalk.table_id,
+        )
+
+        signals = payload.get("signals", [])
+        return dt_notifier.notify_signals(signals)
+
 
 LIVE_LOG_PATH = RESULTS_DIR / "live_signals_log.csv"
 
@@ -413,6 +429,7 @@ def main():
     parser.add_argument("--all", action="store_true", help="全市场扫描模式")
     parser.add_argument("--output", type=str, default=None, help="导出 JSON 结果路径")
     parser.add_argument("--notify", action="store_true", help="触发信号时发送邮件通知")
+    parser.add_argument("--notify-dingtalk", action="store_true", help="触发信号时写入钉钉多维表格")
     parser.add_argument("--schedule", action="store_true", help="启动收盘后定时自动扫描守护进程")
     parser.add_argument("--time", type=str, default="15:10", help="定时运行时间 (HH:MM，默认 15:10)")
 
@@ -450,6 +467,10 @@ def main():
         # 邮件通知
         if args.notify:
             pipeline.send_notification(payload)
+
+        # 钉钉多维表格通知
+        if args.notify_dingtalk:
+            pipeline.send_dingtalk_notification(payload)
 
     if args.schedule:
         try:
