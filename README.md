@@ -27,6 +27,7 @@ liangwf/
 ├── CHANGELOG.md              # 📋 详细版本迭代日志
 ├── plan.md                   # 📝 项目改造规划
 ├── requirements.txt          # 依赖列表
+├── DEPLOY.md                 # 🚀 操作系统级开机自启与后台定时服务部署指南 (Windows/Mac/Linux)
 └── README.md
 ```
 
@@ -35,24 +36,21 @@ liangwf/
 ## 🚀 快速开始
 
 ```bash
-# 1. 进入主生产系统目录
-cd XiaoLiangTrader
-
-# 2. 安装依赖
+# 1. 安装项目依赖
 pip install -r requirements.txt
 
-# 3. 运行全市场短线机会扫描
-python main.py --scan --all
+# 2. 启动本地 Streamlit Web 可视化看板
+python -m streamlit run XiaoLiangTrader/webapp.py
 
-# 4. 训练机器学习模型 (LightGBM)
-python main.py --train
+# 3. 每日盘后执行短线信号扫描与通知
+python XiaoLiangTrader/scripts/daily_signal.py --notify --notify-dingtalk
 
-# 5. 运行真实规则回测 (严格 T+1 与涨跌停限制)
-python main.py --backtest
+# 4. 实盘信号事后复盘检验 (统计真实胜率与收益)
+python XiaoLiangTrader/scripts/review_live_signals.py
 
-# 6. 运行全套自动化测试
-cd ..
-python -m unittest discover -s tests -p "test_*.py"
+# 5. 运行全套自动化测试套件 (25/25 passed)
+python -X utf8 -m unittest discover -s tests -p "test_*.py"
 ```
 
+详细后台无人值守开机自启部署请参见 [`DEPLOY.md`](DEPLOY.md)。
 详细模块文档与配置说明请参见 [`XiaoLiangTrader/README.md`](XiaoLiangTrader/README.md)。

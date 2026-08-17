@@ -2,6 +2,24 @@
 
 > 写给小白看的，每个版本改了什么、为什么改、怎么用，全部说清楚。
 
+## v1.0.15（2026-08-17）— 系统级后台定时服务 (Windows/Mac/Linux) 部署支持与静默自动化
+
+### ⏰ 原生系统计划任务 & 无人值守静默自动化
+**一句话：** 解决单纯依赖 Python 进程常驻的关机失效问题，提供跨平台操作系统级（Windows 任务计划程序 / macOS launchd / Linux crontab）后台定时服务部署指南（`DEPLOY.md`）与 Windows 一键注册脚本。
+
+**核心改动：**
+1. **Windows 原生一键定时注册与静默运行 (`scripts/`)**：
+   - 新增 `register_windows_task.ps1`：一键自动在 Windows 任务计划程序中注册交易日下午 15:10 自动执行的任务。
+   - 新增 `run_daily.bat` 与 `run_silent.vbs`：支持后台完全静默运行，无需开着命令行窗口，自动将扫描输出重定向至 `logs/daily_task.log`。
+2. **跨平台定时服务部署模板与指南 (`DEPLOY.md`)**：
+   - 编写详尽的 `DEPLOY.md`，提供 Windows 图形/命令行配置、macOS `launchd`（`com.xiaoliangtrader.daily_signal.plist`）与 Linux `crontab` 步骤。
+3. **Web 看板联动与文档更新**：
+   - `README.md` 与 `DEPLOY.md` 同步更新，确保盘后自动扫描生成数据与 Streamlit Web UI 无缝联动。
+4. **自动化单元测试持续保障**：
+   - 全库 25 个单元测试 100% 全部通过。
+
+---
+
 ## v1.0.14（2026-08-17）— Streamlit 本地量化看板 (Web UI) 与只读仪表盘上线
 
 ### 🖥️ 本地 Web 可视化仪表盘 & 一键直观复盘
