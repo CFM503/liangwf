@@ -1,0 +1,3 @@
+﻿date,symbol,name,action,price,stop_loss_price,take_profit_price,ml_confidence,reason
+2026-08-13,600436,片仔癀,SELL,133.66,0.0,0.0,0.661,MA5/20死叉平仓
+2026-08-13,601888,中国中免,SELL,54.97,0.0,0.0,0.218,MA5/20死叉平仓

@@ -361,6 +361,50 @@ class DailySignalPipeline:
         return sent
 
 
+LIVE_LOG_PATH = RESULTS_DIR / "live_signals_log.csv"
+
+
+def append_to_live_log(signals: List[Dict]):
+    """追加留痕实盘信号到 live_signals_log.csv"""
+    if not signals:
+        return
+
+    file_exists = LIVE_LOG_PATH.exists()
+
+    # 读入已有数据防止重复写入
+    existing_keys = set()
+    if file_exists:
+        try:
+            df_old = pd.read_csv(LIVE_LOG_PATH, dtype=str)
+            for _, r in df_old.iterrows():
+                existing_keys.add((str(r.get("date", "")), str(r.get("symbol", "")), str(r.get("action", ""))))
+        except Exception:
+            pass
+
+    rows_to_append = []
+    for s in signals:
+        key = (str(s.get("date")), str(s.get("symbol")), str(s.get("action")))
+        if key in existing_keys:
+            continue
+        rows_to_append.append({
+            "date": s.get("date"),
+            "symbol": s.get("symbol"),
+            "name": s.get("name"),
+            "action": s.get("action"),
+            "price": s.get("price"),
+            "stop_loss_price": s.get("stop_loss_price", 0.0),
+            "take_profit_price": s.get("take_profit_price", 0.0),
+            "ml_confidence": s.get("ml_confidence", 0.0),
+            "reason": s.get("reason", ""),
+        })
+        existing_keys.add(key)
+
+    if rows_to_append:
+        df_new = pd.DataFrame(rows_to_append)
+        df_new.to_csv(LIVE_LOG_PATH, mode="a" if file_exists else "w", header=not file_exists, index=False, encoding="utf-8-sig")
+        log.info(f"[留痕] 已追加 {len(rows_to_append)} 条实盘信号至: {LIVE_LOG_PATH}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="XiaoLiangTrader 每日买卖点预测 Pipeline")
     parser.add_argument("--pool", nargs="+", help="指定股票代码列表（默认 60 只核心龙头池）")
@@ -399,6 +443,9 @@ def main():
             json.dump(payload, f, ensure_ascii=False, indent=2)
 
         log.info(f"[Pipeline] 信号结果已导出至: {output_path}")
+
+        # 实盘留痕追加至 live_signals_log.csv
+        append_to_live_log(payload.get("signals", []))
 
         # 邮件通知
         if args.notify:

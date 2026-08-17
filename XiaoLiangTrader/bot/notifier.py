@@ -7,6 +7,7 @@ QQ邮箱 / 163 / Gmail 都支持。
 
 import smtplib
 import ssl
+from abc import ABC, abstractmethod
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
@@ -16,7 +17,37 @@ from utils.logger import get_logger
 log = get_logger("xlt.notify")
 
 
-class Notifier:
+class BaseNotifier(ABC):
+    """
+    可插拔通知接口抽象基类
+    """
+
+    @abstractmethod
+    def notify_report(self, report: str) -> bool:
+        """发送每日报告/信号看板"""
+        pass
+
+    @abstractmethod
+    def notify_trade(self, action: str, symbol: str, price: float, size: int, reason: str) -> bool:
+        """发送交易信号/操作通知"""
+        pass
+
+    @abstractmethod
+    def notify_error(self, error: str) -> bool:
+        """发送系统异常告警"""
+        pass
+
+    @abstractmethod
+    def notify_kill_switch(self) -> bool:
+        """发送紧急停止通知"""
+        pass
+
+
+class Notifier(BaseNotifier):
+    """
+    邮件通知实现 (SMTP)
+    """
+
     def __init__(
         self,
         enabled: bool = False,

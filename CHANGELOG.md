@@ -2,6 +2,26 @@
 
 > 写给小白看的，每个版本改了什么、为什么改、怎么用，全部说清楚。
 
+## v1.0.9（2026-08-17）— 阶段六：通知接口抽象化 + 实盘信号留痕与事后复盘检验体系
+
+### 📑 通知抽象解耦 & 实盘面向未来跟踪复盘
+**一句话：** 抽象通知层可插拔接口为钉钉等渠道预留无侵入扩展点；建立实盘信号每日持久化留痕（`live_signals_log.csv`）与独立事后复盘检验工具（`review_live_signals.py`），实现面向未来未见数据的真实策略泛化能力审计。
+
+**核心改动：**
+1. **通知接口标准化抽象 (`BaseNotifier`)**：
+   - 在 `XiaoLiangTrader/bot/notifier.py` 中定义抽象基类 `BaseNotifier`。
+   - `Notifier`（邮件）实现该基类。
+   - 新增 `XiaoLiangTrader/bot/dingtalk_notifier.py` 钉钉预留类（保持未实现占位状态，不引入猜测性代码）。
+2. **实盘信号自动留痕 (`live_signals_log.csv`)**：
+   - 每次运行 `daily_signal.py` 时，自动将产生的买卖信号追加记录至 `XiaoLiangTrader/ml_model/eval_results/live_signals_log.csv`（自带日期与标的去重机制）。
+3. **事后复盘检验工具 (`scripts/review_live_signals.py`)**：
+   - 新增面向未来的实盘复盘脚本，自动回填后续真实 K 线行情，计算实际收益、止损止盈触及状态与胜率。
+   - 复盘结果独立于历史回测数据展示，真实评估策略实战泛化能力。
+4. **自动化单元测试全通过**：
+   - 新增 `tests/test_live_review_and_dingtalk.py`，全库 16 个测试 100% 通过。
+
+---
+
 ## v1.0.8（2026-08-14）— 阶段五：信号逻辑归一、收盘后定时调度与邮件通知
 
 ### 📬 信号源唯一定型 & 收盘后定时通知闭环
