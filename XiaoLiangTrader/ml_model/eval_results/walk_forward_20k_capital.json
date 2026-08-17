@@ -21,28 +21,28 @@
       },
       "backtest": {
         "baseline": {
-          "trades_count": 34,
-          "win_rate": 41.17647058823529,
-          "annual_return": 5.514079652816824,
-          "max_drawdown": 11.54510499162672,
+          "trades_count": 25,
+          "win_rate": 40.0,
+          "annual_return": 2.3030101363136666,
+          "max_drawdown": 10.306526957690329,
           "sharpe_ratio": 0,
-          "final_value": 1052895.8130703662
+          "final_value": 20442.12364506801
         },
         "lightgbm": {
-          "trades_count": 29,
-          "win_rate": 44.827586206896555,
-          "annual_return": 6.345348637323636,
-          "max_drawdown": 11.236046456795764,
+          "trades_count": 21,
+          "win_rate": 33.33333333333333,
+          "annual_return": -1.1435942530750745,
+          "max_drawdown": 11.12467633135892,
           "sharpe_ratio": 0,
-          "final_value": 1060860.4077283172
+          "final_value": 19780.30725784601
         },
         "xgboost": {
-          "trades_count": 29,
-          "win_rate": 44.827586206896555,
-          "annual_return": 3.697667814778523,
-          "max_drawdown": 11.236046456795764,
+          "trades_count": 21,
+          "win_rate": 33.33333333333333,
+          "annual_return": -3.2250245884437674,
+          "max_drawdown": 12.380904340297151,
           "sharpe_ratio": 0,
-          "final_value": 1035483.6253998332
+          "final_value": 19380.18966000101
         }
       }
     },
@@ -67,28 +67,28 @@
       },
       "backtest": {
         "baseline": {
-          "trades_count": 39,
-          "win_rate": 35.8974358974359,
-          "annual_return": -2.423081774114359,
-          "max_drawdown": 11.480991718262189,
+          "trades_count": 31,
+          "win_rate": 35.483870967741936,
+          "annual_return": -11.9820577413444,
+          "max_drawdown": 16.914149349928028,
           "sharpe_ratio": 0,
-          "final_value": 976719.4403485332
+          "final_value": 17692.970846393753
         },
         "lightgbm": {
-          "trades_count": 35,
-          "win_rate": 28.57142857142857,
-          "annual_return": -0.742415551295272,
-          "max_drawdown": 9.98410756954977,
+          "trades_count": 23,
+          "win_rate": 21.73913043478261,
+          "annual_return": -12.835198158986405,
+          "max_drawdown": 17.09322443064349,
           "sharpe_ratio": 0,
-          "final_value": 992869.4009049354
+          "final_value": 17528.249952854003
         },
         "xgboost": {
-          "trades_count": 36,
-          "win_rate": 16.666666666666664,
-          "annual_return": -9.771042836473951,
-          "max_drawdown": 16.17819844673504,
+          "trades_count": 20,
+          "win_rate": 15.0,
+          "annual_return": -14.866102103067416,
+          "max_drawdown": 15.543892733114475,
           "sharpe_ratio": 0,
-          "final_value": 905978.5690579684
+          "final_value": 17135.87255412225
         }
       }
     },
@@ -113,28 +113,28 @@
       },
       "backtest": {
         "baseline": {
-          "trades_count": 31,
-          "win_rate": 41.935483870967744,
-          "annual_return": 5.33602227688952,
-          "max_drawdown": 18.395483956507643,
+          "trades_count": 22,
+          "win_rate": 40.909090909090914,
+          "annual_return": 8.17463623439942,
+          "max_drawdown": 10.680640820781205,
           "sharpe_ratio": 0,
-          "final_value": 1051189.477960136
+          "final_value": 21567.571915931512
         },
         "lightgbm": {
-          "trades_count": 28,
-          "win_rate": 46.42857142857143,
-          "annual_return": 8.099929030871348,
-          "max_drawdown": 18.130857743191505,
+          "trades_count": 15,
+          "win_rate": 46.666666666666664,
+          "annual_return": 14.983862029871469,
+          "max_drawdown": 10.81032494274694,
           "sharpe_ratio": 0,
-          "final_value": 1077663.393215099
+          "final_value": 22869.710195399013
         },
         "xgboost": {
-          "trades_count": 27,
-          "win_rate": 44.44444444444444,
-          "annual_return": 1.8850824340169836,
-          "max_drawdown": 16.845377726575915,
+          "trades_count": 13,
+          "win_rate": 46.15384615384615,
+          "annual_return": 10.269551416974656,
+          "max_drawdown": 9.429592405280053,
           "sharpe_ratio": 0,
-          "final_value": 1018096.0486908247
+          "final_value": 21968.522898346513
         }
       }
     }

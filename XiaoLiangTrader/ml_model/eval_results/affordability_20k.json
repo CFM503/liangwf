@@ -1,0 +1,529 @@
+{
+  "initial_cash": 20000.0,
+  "max_single_pct": 0.2,
+  "max_single_cash_limit": 4000.0,
+  "max_price_threshold": 40.0,
+  "total_stocks_checked": 60,
+  "affordable_count": 26,
+  "affordable_ratio": "43.3%",
+  "unaffordable_count": 34,
+  "unaffordable_ratio": "56.7%",
+  "affordable_stocks": [
+    {
+      "symbol": "000100",
+      "name": "TCL科技",
+      "latest_price": 5.14,
+      "one_lot_cost": 514.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600019",
+      "name": "宝钢股份",
+      "latest_price": 5.75,
+      "one_lot_cost": 575.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "000725",
+      "name": "京东方A",
+      "latest_price": 5.81,
+      "one_lot_cost": 581.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "601398",
+      "name": "工商银行",
+      "latest_price": 7.56,
+      "one_lot_cost": 756.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "300015",
+      "name": "爱尔眼科",
+      "latest_price": 8.71,
+      "one_lot_cost": 871.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "601600",
+      "name": "中国铝业",
+      "latest_price": 9.26,
+      "one_lot_cost": 926.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "000001",
+      "name": "平安银行",
+      "latest_price": 11.11,
+      "one_lot_cost": 1111.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "601012",
+      "name": "隆基绿能",
+      "latest_price": 12.65,
+      "one_lot_cost": 1265.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600438",
+      "name": "通威股份",
+      "latest_price": 12.8,
+      "one_lot_cost": 1280.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "300122",
+      "name": "智飞生物",
+      "latest_price": 13.06,
+      "one_lot_cost": 1306.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "601166",
+      "name": "兴业银行",
+      "latest_price": 18.03,
+      "one_lot_cost": 1803.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600031",
+      "name": "三一重工",
+      "latest_price": 18.75,
+      "one_lot_cost": 1875.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "300059",
+      "name": "东方财富",
+      "latest_price": 19.47,
+      "one_lot_cost": 1947.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "000768",
+      "name": "中航西飞",
+      "latest_price": 21.43,
+      "one_lot_cost": 2143.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "002241",
+      "name": "歌尔股份",
+      "latest_price": 21.88,
+      "one_lot_cost": 2188.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "601225",
+      "name": "陕西煤业",
+      "latest_price": 25.37,
+      "one_lot_cost": 2537.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600887",
+      "name": "伊利股份",
+      "latest_price": 25.51,
+      "one_lot_cost": 2551.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600030",
+      "name": "中信证券",
+      "latest_price": 27.31,
+      "one_lot_cost": 2731.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600900",
+      "name": "长江电力",
+      "latest_price": 28.1,
+      "one_lot_cost": 2810.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "601899",
+      "name": "紫金矿业",
+      "latest_price": 32.53,
+      "one_lot_cost": 3253.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600150",
+      "name": "中国船舶",
+      "latest_price": 33.42,
+      "one_lot_cost": 3342.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "002415",
+      "name": "海康威视",
+      "latest_price": 34.88,
+      "one_lot_cost": 3488.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "603288",
+      "name": "海天味业",
+      "latest_price": 35.82,
+      "one_lot_cost": 3582.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600893",
+      "name": "航发动力",
+      "latest_price": 36.88,
+      "one_lot_cost": 3688.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "600036",
+      "name": "招商银行",
+      "latest_price": 38.46,
+      "one_lot_cost": 3846.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    },
+    {
+      "symbol": "000651",
+      "name": "格力电器",
+      "latest_price": 39.9,
+      "one_lot_cost": 3990.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "AFFORDABLE"
+    }
+  ],
+  "unaffordable_stocks": [
+    {
+      "symbol": "600519",
+      "name": "贵州茅台",
+      "latest_price": 1341.99,
+      "one_lot_cost": 134199.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 130199.0
+    },
+    {
+      "symbol": "002371",
+      "name": "北方华创",
+      "latest_price": 738.66,
+      "one_lot_cost": 73866.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 69866.0
+    },
+    {
+      "symbol": "603986",
+      "name": "兆易创新",
+      "latest_price": 417.48,
+      "one_lot_cost": 41748.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 37748.0
+    },
+    {
+      "symbol": "300750",
+      "name": "宁德时代",
+      "latest_price": 393.93,
+      "one_lot_cost": 39393.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 35393.0
+    },
+    {
+      "symbol": "300033",
+      "name": "同花顺",
+      "latest_price": 230.26,
+      "one_lot_cost": 23026.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 19026.0
+    },
+    {
+      "symbol": "603259",
+      "name": "药明康德",
+      "latest_price": 159.24,
+      "one_lot_cost": 15924.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 11924.0
+    },
+    {
+      "symbol": "300760",
+      "name": "迈瑞医疗",
+      "latest_price": 150.47,
+      "one_lot_cost": 15047.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 11047.0
+    },
+    {
+      "symbol": "600436",
+      "name": "片仔癀",
+      "latest_price": 132.59,
+      "one_lot_cost": 13259.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 9259.0
+    },
+    {
+      "symbol": "600809",
+      "name": "山西汾酒",
+      "latest_price": 123.52,
+      "one_lot_cost": 12352.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 8352.0
+    },
+    {
+      "symbol": "300661",
+      "name": "圣邦股份",
+      "latest_price": 123.0,
+      "one_lot_cost": 12300.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 8300.0
+    },
+    {
+      "symbol": "300274",
+      "name": "阳光电源",
+      "latest_price": 116.72,
+      "one_lot_cost": 11672.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 7672.0
+    },
+    {
+      "symbol": "603501",
+      "name": "韦尔股份",
+      "latest_price": 91.08,
+      "one_lot_cost": 9108.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 5108.0
+    },
+    {
+      "symbol": "000568",
+      "name": "泸州老窖",
+      "latest_price": 89.42,
+      "one_lot_cost": 8942.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 4942.0
+    },
+    {
+      "symbol": "002594",
+      "name": "比亚迪",
+      "latest_price": 88.9,
+      "one_lot_cost": 8890.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 4890.0
+    },
+    {
+      "symbol": "000333",
+      "name": "美的集团",
+      "latest_price": 83.03,
+      "one_lot_cost": 8303.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 4303.0
+    },
+    {
+      "symbol": "300782",
+      "name": "卓胜微",
+      "latest_price": 78.87,
+      "one_lot_cost": 7887.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 3887.0
+    },
+    {
+      "symbol": "000858",
+      "name": "五粮液",
+      "latest_price": 73.75,
+      "one_lot_cost": 7375.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 3375.0
+    },
+    {
+      "symbol": "600309",
+      "name": "万华化学",
+      "latest_price": 73.04,
+      "one_lot_cost": 7304.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 3304.0
+    },
+    {
+      "symbol": "002049",
+      "name": "紫光国微",
+      "latest_price": 67.89,
+      "one_lot_cost": 6789.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 2789.0
+    },
+    {
+      "symbol": "601138",
+      "name": "工业富联",
+      "latest_price": 66.19,
+      "one_lot_cost": 6619.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 2619.0
+    },
+    {
+      "symbol": "300124",
+      "name": "汇川技术",
+      "latest_price": 61.2,
+      "one_lot_cost": 6120.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 2120.0
+    },
+    {
+      "symbol": "603605",
+      "name": "珀莱雅",
+      "latest_price": 57.18,
+      "one_lot_cost": 5718.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1718.0
+    },
+    {
+      "symbol": "002475",
+      "name": "立讯精密",
+      "latest_price": 56.58,
+      "one_lot_cost": 5658.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1658.0
+    },
+    {
+      "symbol": "300014",
+      "name": "亿纬锂能",
+      "latest_price": 56.44,
+      "one_lot_cost": 5644.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1644.0
+    },
+    {
+      "symbol": "300347",
+      "name": "泰格医药",
+      "latest_price": 56.02,
+      "one_lot_cost": 5602.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1602.0
+    },
+    {
+      "symbol": "601888",
+      "name": "中国中免",
+      "latest_price": 54.06,
+      "one_lot_cost": 5406.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1406.0
+    },
+    {
+      "symbol": "002460",
+      "name": "赣锋锂业",
+      "latest_price": 53.85,
+      "one_lot_cost": 5385.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1385.0
+    },
+    {
+      "symbol": "600276",
+      "name": "恒瑞医药",
+      "latest_price": 52.62,
+      "one_lot_cost": 5262.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1262.0
+    },
+    {
+      "symbol": "601318",
+      "name": "中国平安",
+      "latest_price": 51.75,
+      "one_lot_cost": 5175.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1175.0
+    },
+    {
+      "symbol": "000538",
+      "name": "云南白药",
+      "latest_price": 50.03,
+      "one_lot_cost": 5003.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 1003.0
+    },
+    {
+      "symbol": "002466",
+      "name": "天齐锂业",
+      "latest_price": 48.73,
+      "one_lot_cost": 4873.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 873.0
+    },
+    {
+      "symbol": "601088",
+      "name": "中国神华",
+      "latest_price": 44.72,
+      "one_lot_cost": 4472.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 472.0
+    },
+    {
+      "symbol": "600760",
+      "name": "中航沈飞",
+      "latest_price": 44.43,
+      "one_lot_cost": 4443.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 443.0
+    },
+    {
+      "symbol": "002304",
+      "name": "洋河股份",
+      "latest_price": 40.58,
+      "one_lot_cost": 4058.0,
+      "max_single_cash_limit": 4000.0,
+      "status": "UNAFFORDABLE",
+      "shortfall_per_lot": 58.0
+    }
+  ]
+}
