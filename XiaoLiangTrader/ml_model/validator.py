@@ -33,7 +33,7 @@ from sklearn.metrics import (
 from data.fetcher import fetch_stock, STOCK_NAMES, DEFAULT_POOL
 from ml_model.features import compute_features, FEATURE_COLS, make_label
 from ml_model.predictor import MLPredictor, _create_model
-from backtest.engine import BacktestEngine, DualMABTStrategy, ASharePandasData
+from backtest.engine import BacktestEngine, DualMABTStrategy, ASharePandasData, AShareCommission
 import backtrader as bt
 from utils.logger import get_logger
 
@@ -52,12 +52,14 @@ class WalkForwardValidator:
         threshold: float = 0.03,
         ml_confidence: float = 0.55,
         initial_cash: float = 1_000_000,
+        stamp_duty: float = 0.0005,
     ):
         self.stock_codes = stock_codes or list(DEFAULT_POOL)
         self.forward_days = forward_days
         self.threshold = threshold
         self.ml_confidence = ml_confidence
         self.initial_cash = initial_cash
+        self.stamp_duty = stamp_duty
 
     def _build_dataset(self, start_date: str, end_date: str) -> Tuple[pd.DataFrame, Dict[str, pd.DataFrame]]:
         """构建指定时间区间的特征与标签数据集"""
@@ -156,7 +158,7 @@ class WalkForwardValidator:
         )
 
         cerebro.broker.setcash(self.initial_cash)
-        cerebro.broker.setcommission(commission=0.00025)
+        cerebro.broker.addcommissioninfo(AShareCommission(commission=0.00025, stamp_duty=self.stamp_duty))
         cerebro.broker.set_slippage_perc(0.001)
 
         cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe", riskfreerate=0.03)

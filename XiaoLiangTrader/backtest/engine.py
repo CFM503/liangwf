@@ -235,6 +235,29 @@ class DualMABTStrategy(bt.Strategy):
                             self.orders[d] = self.buy(data=d, size=size)
 
 
+class AShareCommission(bt.CommInfoBase):
+    """
+    A 股真实交易成本模型：
+    - 买入：佣金 0.025% (万2.5)
+    - 卖出：佣金 0.025% (万2.5) + 印花税 0.05% (千0.5, 2023年8月减半征收标准)
+    """
+    params = (
+        ("commission", 0.00025),       # 基础佣金 万2.5
+        ("stamp_duty", 0.0005),        # 卖出印花税 0.05% (千0.5)
+        ("stocklike", True),
+        ("commtype", bt.CommInfoBase.COMM_PERC),
+    )
+
+    def _getcommission(self, size, price, pseudoexec):
+        if size > 0:
+            # 买入：仅佣金
+            return size * price * self.p.commission
+        elif size < 0:
+            # 卖出：佣金 + 印花税 (0.05%)
+            return abs(size) * price * (self.p.commission + self.p.stamp_duty)
+        return 0.0
+
+
 # ═══════════════════════════════════════════════
 # 3. 回测引擎主类
 # ═══════════════════════════════════════════════
@@ -243,8 +266,10 @@ class BacktestEngine:
     回测引擎 — 严格执行 A 股交易规则
     """
 
-    def __init__(self, initial_cash: float = 1_000_000):
+    def __init__(self, initial_cash: float = 1_000_000, stamp_duty: float = 0.0005, commission: float = 0.00025):
         self.initial_cash = initial_cash
+        self.stamp_duty = stamp_duty
+        self.commission = commission
 
     def run(
         self,
@@ -304,9 +329,9 @@ class BacktestEngine:
             ml_confidence=ml_confidence,
         )
 
-        # 资金与真实成本
+        # 资金与真实成本（佣金万2.5 + 卖出印花税0.05% + 滑点0.1%）
         cerebro.broker.setcash(self.initial_cash)
-        cerebro.broker.setcommission(commission=0.00025)  # 佣金万分之2.5
+        cerebro.broker.addcommissioninfo(AShareCommission(commission=self.commission, stamp_duty=self.stamp_duty))
         cerebro.broker.set_slippage_perc(0.001)           # 滑点 0.1%
 
         # 分析器
